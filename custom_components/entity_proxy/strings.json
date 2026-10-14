@@ -30,8 +30,18 @@
   "options": {
     "step": {
       "init": {
-        "title": "Edit proxy",
-        "description": "Select what you want to change."
+        "title": "Entity Proxy Settings",
+        "description": "Choose which settings of this entity proxy to edit.",
+        "menu_options": {
+          "source": "Change source entity",
+          "preset": "Change off preset",
+          "rules": "Edit state and action rules"
+        },
+        "menu_option_descriptions": {
+          "source": "Select the original or renamed entity.",
+          "preset": "Choose the preset entity and option used for off.",
+          "rules": "Edit state values, backup sensors, actions and fallbacks."
+        }
       },
       "source": {
         "title": "Change source entity",
@@ -67,6 +77,16 @@
     },
     "abort": {
       "not_light": "Preset editor is available for light entities only."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "errors": {
+        "name": "Entity Proxy · {proxy_name} · Errors"
+      },
+      "configuration": {
+        "name": "Entity Proxy · {proxy_name} · Active settings"
+      }
     }
   }
 }
