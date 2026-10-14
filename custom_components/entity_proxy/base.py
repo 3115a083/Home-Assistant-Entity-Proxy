@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.device import async_entity_id_to_device
 
 from .const import DOMAIN
 
@@ -18,6 +19,9 @@ class ProxyEntity(Entity):
         self.runtime = runtime
         self._attr_unique_id = f"{runtime.entry.entry_id}_{role}"
         self._attr_name = runtime.entry.data["name"]
+        # HA 2026.8: helper entities link directly to the source device.
+        # Never copy device_info or identifiers across config entries.
+        self.device_entry = async_entity_id_to_device(runtime.hass, runtime.source)
 
     @property
     def available(self) -> bool:
