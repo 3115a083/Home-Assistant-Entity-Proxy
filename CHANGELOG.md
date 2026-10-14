@@ -4,6 +4,24 @@ All notable changes to Entity Proxy are documented here.
 
 The project uses [Semantic Versioning](https://semver.org/). GitHub Releases use a `v` prefix (for example `v0.1.3`); the Home Assistant integration manifest uses the same version without the prefix.
 
+## [0.1.4] - 2026-10-14
+
+### Added
+- Automatically associate each Entity Proxy entity with the original source device in Home Assistant's device registry.
+- Show the per-proxy error sensor under the source device's diagnostics section.
+- Re-link to the new source device when changing the source through integration options and reloading.
+- Add regression tests for WLED, other device types, missing device registry entries, and stable proxy IDs.
+
+### Security and compatibility
+- Use Home Assistant's supported helper entity device link (`device_entry`), not copied `device_info` identifiers or device registry modifications. Compatible with the device ownership model in Home Assistant Core 2026.8+.
+- Preserve the original device, integration ownership, configuration, proxy entry IDs and existing rule behavior.
+- Harden repository development controls with a security policy, agent guidelines, CODEOWNERS, Dependabot and pinned GitHub Actions. Administrative branch and tag rulesets must still be enabled separately by the repository owner.
+
+### Notes
+- An existing proxy is linked after installing this release and restarting Home Assistant.
+- A source entity with no device registry association cannot be shown on a device page.
+- If Home Assistant reassigns a source entity's device independently, reload the proxy integration to refresh its link.
+
 ## [0.1.3] - 2026-10-14
 
 ### Changed
