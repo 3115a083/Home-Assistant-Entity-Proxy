@@ -68,6 +68,8 @@ class DeviceTests(unittest.TestCase):
                 }
             },
             virtual_state="off",
+            proxy_entity_id=None,
+            notify=lambda: None,
         )
 
     def test_proxy_and_diagnostics_link_to_source_device(self):
@@ -91,15 +93,23 @@ class DeviceTests(unittest.TestCase):
     def test_config_sensor_shows_safe_action_summary(self):
         runtime = self.make_runtime()
         config = ProxyConfigurationSensor(runtime)
-        self.assertEqual(config.native_value, "configured")
+        self.assertEqual(config.native_value, "control_missing")
+        runtime.proxy_entity_id = "light.bedroom_proxy"
+        self.assertEqual(config.native_value, "registered")
         attrs = config.extra_state_attributes
         self.assertEqual(attrs["source_entity"], "light.wled")
+        self.assertEqual(attrs["proxy_entity_id"], "light.bedroom_proxy")
+        self.assertEqual(attrs["proxy_domain"], "light")
         self.assertEqual(attrs["off_preset_name"], "Dark")
         self.assertEqual(attrs["off_preset_entity"], "select.wled_presets")
         self.assertEqual(attrs["action_overrides"], ["turn_off"])
         self.assertEqual(attrs["virtual_state"], "off")
         self.assertNotIn("steps", attrs)
         self.assertNotIn("data", attrs)
+
+    def test_control_name_is_distinct_from_source(self):
+        proxy = ProxyEntity(self.make_runtime())
+        self.assertEqual(proxy._attr_name, "Entity Proxy: Bedroom Proxy")
 
     def test_errors_sensor_is_device_linked_and_always_available(self):
         runtime = self.make_runtime()
