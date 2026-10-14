@@ -45,6 +45,7 @@ class ProxyEntity(Entity):
         if self._proxy_role == "proxy":
             # HA assigns the actual ID at registration; names are not IDs.
             self.runtime.proxy_entity_id = self.entity_id
+            self.runtime._set_error("proxy_registration", None)
             self.runtime.notify()
 
     def _changed(self) -> None:
