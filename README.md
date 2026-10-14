@@ -2,7 +2,7 @@
 
 A configurable, event-driven Home Assistant custom integration that wraps an existing entity, selectively overrides its reported state/attributes, and replaces individual service actions with safe, targeted Home Assistant services. Includes fallbacks and a per-proxy error sensor.
 
-> **Status: v0.1.4, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
+> **Status: v0.1.5, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
 
 ## Supported entities
 
@@ -41,7 +41,7 @@ Entity Proxy uses semantic versions. Each HACS-installable version has:
 
 Releases are generated automatically from a version change on `main`, **only after checks pass**. Do not manually edit tags or overwrite published releases. The default branch is hidden in HACS to favor stable tagged versions.
 
-**Migrating an older HACS installation that shows a short Git commit hash:** Open HACS → Entity Proxy → three-dot menu → **Redownload**, explicitly select the latest release (`v0.1.4` or newer), and restart Home Assistant. HACS does not always prompt for the first tagged release when transitioning from an earlier commit-based install. Existing Home Assistant integration entries and their settings are retained by a normal HACS reinstall; keep a backup before changing versions.
+**Migrating an older HACS installation that shows a short Git commit hash:** Open HACS → Entity Proxy → three-dot menu → **Redownload**, explicitly select the latest release (`v0.1.5` or newer), and restart Home Assistant. HACS does not always prompt for the first tagged release when transitioning from an earlier commit-based install. Existing Home Assistant integration entries and their settings are retained by a normal HACS reinstall; keep a backup before changing versions.
 
 Find release notes at [GitHub Releases](https://github.com/3115a083/Home-Assistant-Entity-Proxy/releases).
 
@@ -53,13 +53,15 @@ Copy `custom_components/entity_proxy` into `<config>/custom_components/entity_pr
 
 ## Editing an existing proxy (no re-creation required)
 
-Go to **Settings → Devices & services → Entity Proxy → Configure**. Choose:
+Go to **Settings → Devices & services → Integrations → Entity Proxy**, open the **Entity Proxy integration entry/card** (not the WLED device or individual entity) and choose **Configure**. Choose:
 
 - **Change source entity:** Select the renamed or replacement entity. Only entities in the *same domain* are allowed, so the proxy keeps its original type and entity ID. Literal references to the previous source in state and action rules are migrated automatically. References to other entities, such as WLED preset selectors, are unchanged. Historical virtual light state and saved color snapshots are reset when the source changes. The original integration data is never rewritten; the new source is saved in the entry options.
 - **Edit off preset** (lights only): Choose the `select` entity and the exact preset name. This updates the `turn_off` action while preserving all other action rules and state overrides. **Any previous `turn_off` fallback is replaced.** The editor intentionally does not add a power-cutting fallback.
 - **Edit advanced rules:** Edit or add state and action overrides using JSON. The current values are prefilled and input is retained when validation fails.
 
 The source entity and the preset select entity must remain enabled in Home Assistant. Hide the original *from dashboards* if desired, but do not disable it. Changing the source domain (e.g. `light` to `switch`) requires creating a new proxy.
+
+**If Configure is missing:** First verify the files under `/config/custom_components/entity_proxy/` are from release v0.1.5 (see `manifest.json`), not merely that HACS displays the latest available version. Redownload the tagged release in HACS, restart Home Assistant, refresh the browser and open the **integration entry's** menu. `Configure` is an *options flow* at the integration level, not a button on the source device. If it remains missing, collect the Home Assistant version and config-entry diagnostics/logs and report a bug. Do not delete the proxy to fix a missing menu, since that may change its entity IDs.
 
 ## Device association
 
@@ -216,6 +218,13 @@ Service targets must match the service domain, and the integration never accepts
 If an action has **no** override, the proxy passes the original parameters to the same action on its source entity. If a source light was virtually switched off through a custom action, a plain `turn_on` restores its remembered lit appearance when possible. User-supplied `turn_on` parameters take precedence.
 
 ## Diagnostics and fallbacks
+
+Find both diagnostic entities under **Settings → Devices & services → Entities**, searching for your proxy's name plus `Errors` or `Configuration`. When the source has a registered physical device (such as a WLED controller), both diagnostics are linked to **that existing device's Diagnostics section**. Depending on Home Assistant's display filters, you may need to show diagnostic or hidden entities. The exact `sensor.*` entity IDs depend on the entity registry, not just the display name.
+
+**Configuration sensor:** `sensor.<name>_configuration` reports `configured` and safe, read-only attributes including `source_entity`, `state_overrides`, `action_overrides`, `off_preset_entity`, `off_preset_name`, `virtual_state` and `active_errors`. This shows what the entry is **actually using** after its reload. It deliberately does not expose raw service data or secrets.
+
+**Errors sensor:** `sensor.<name>_errors` reports the number of active issues. Open its attributes to see the `issues` list; an error count of `0` means no errors are currently recorded, not proof that the physical device behaved correctly.
+
 
 Every config entry creates a `sensor.<name>_errors` entity:
 
