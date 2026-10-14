@@ -1,5 +1,6 @@
 {
   "name": "Entity Proxy",
   "homeassistant": "2025.12.0",
-  "render_readme": true
+  "render_readme": true,
+  "hide_default_branch": true
 }
