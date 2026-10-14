@@ -79,6 +79,13 @@ class EditTests(unittest.IsolatedAsyncioTestCase):
         flow.hass = types.SimpleNamespace(registry=Registry(proxy_entities))
         return flow
 
+    async def test_options_flow_factory_exposed_to_home_assistant(self):
+        # HA uses ConfigFlow.async_get_options_flow to display Configure.
+        options = flow_module.EntityProxyConfigFlow.async_get_options_flow(
+            types.SimpleNamespace(entry_id="existing")
+        )
+        self.assertIsInstance(options, flow_module.ProxyOptionsFlow)
+
     async def test_chooser_offers_preset_for_lights(self):
         flow = self.make_flow()
         result = await flow.async_step_init()
