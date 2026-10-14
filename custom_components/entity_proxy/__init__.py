@@ -29,6 +29,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if Platform.SENSOR not in active:
         active.append(Platform.SENSOR)
     await hass.config_entries.async_forward_entry_setups(entry, active)
+    if runtime.proxy_entity_id is None:
+        # Missing control entities must be visible as an error, not silently
+        # hidden behind healthy-looking configuration diagnostic sensors.
+        runtime._set_error(
+            "proxy_registration",
+            f"Control entity for {source} was not registered. "
+            "Check Settings > Entities (including disabled entities) "
+            "and Home Assistant logs for the Entity Proxy platform.",
+        )
     entry.async_on_unload(entry.add_update_listener(_async_update_options))
     return True
 
