@@ -6,6 +6,7 @@ No eval, executable templates, filesystem paths, Python code, or external URLs.
 from __future__ import annotations
 
 import json
+import math
 import re
 from typing import Any
 
@@ -35,8 +36,13 @@ def parse_json(value: str, expected: type) -> Any:
     if not isinstance(value, str) or len(value) > MAX_RULE_TEXT:
         raise InvalidRules("Rule configuration exceeds size limit")
     try:
-        result = json.loads(value)
-    except (TypeError, ValueError) as err:
+        result = json.loads(
+            value,
+            parse_constant=lambda constant: (_ for _ in ()).throw(
+                InvalidRules(f"Non-finite JSON number: {constant}")
+            ),
+        )
+    except (TypeError, ValueError, RecursionError) as err:
         raise InvalidRules("Rules must be valid JSON") from err
     if not isinstance(result, expected):
         raise InvalidRules(f"Rules must contain a {expected.__name__}")
@@ -77,6 +83,8 @@ def validate_states(raw: Any, primary: str) -> list[dict[str, Any]]:
         for value_key in ("value", "fallback_value"):
             if value_key in item and not isinstance(item[value_key], (str, int, float, bool, type(None))):
                 raise InvalidRules("Constant overrides must be simple scalar values")
+            if value_key in item and isinstance(item[value_key], float) and not math.isfinite(item[value_key]):
+                raise InvalidRules("Numbers must be finite")
         cleaned.append(dict(item))
     return cleaned
 
@@ -101,6 +109,10 @@ def _step(step: Any, source: str) -> dict[str, Any]:
             raise InvalidRules("Invalid or broad-targeting service data")
         if not isinstance(v, (str, int, float, bool, type(None), list)):
             raise InvalidRules("Only scalar and simple list service data is allowed")
+        if isinstance(v, float) and not math.isfinite(v):
+            raise InvalidRules("Numbers must be finite")
+        if isinstance(v, list) and any(isinstance(x, float) and not math.isfinite(x) for x in v):
+            raise InvalidRules("Numbers must be finite")
         if isinstance(v, list) and (len(v) > 8 or not all(isinstance(x, (str, int, float, bool)) for x in v)):
             raise InvalidRules("List service data must have at most eight scalar items")
     forward = step.get("forward_arguments", False)

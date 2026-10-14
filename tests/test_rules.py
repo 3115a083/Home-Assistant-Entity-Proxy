@@ -57,6 +57,11 @@ class RulesTests(unittest.TestCase):
         with self.assertRaises(InvalidRules):
             parse_json(" " * 16001, list)
 
+    def test_reject_nan_and_infinity(self):
+        for text in ("[NaN]", "[Infinity]", "[-Infinity]"):
+            with self.assertRaises(InvalidRules):
+                parse_json(text, list)
+
     def test_reject_code_execution_attempt(self):
         with self.assertRaises(InvalidRules):
             parse_json("__import__('os').system('true')", dict)

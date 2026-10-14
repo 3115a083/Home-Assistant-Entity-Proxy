@@ -117,14 +117,18 @@ class ProxyRuntime:
         attrs = state.attributes
         # Never overwrite remembered appearance with the off/black preset.
         has_color = any(
-            any(v > 0 for v in attrs.get(key, []))
+            any(isinstance(v, (int, float)) and v > 0 for v in attrs.get(key, []))
             for key in ("rgb_color", "rgbw_color", "rgbww_color")
             if isinstance(attrs.get(key), (list, tuple))
         )
+        has_explicit_color = any(
+            isinstance(attrs.get(key), (list, tuple))
+            for key in ("rgb_color", "rgbw_color", "rgbww_color")
+        )
         is_lit = has_color or (
-            isinstance(attrs.get("brightness"), (int, float))
+            not has_explicit_color
+            and isinstance(attrs.get("brightness"), (int, float))
             and attrs["brightness"] > 0
-            and attrs.get("color_mode") not in ("rgb", "rgbw", "rgbww")
         )
         if not is_lit:
             return
@@ -186,6 +190,8 @@ class ProxyRuntime:
         if not self.hass.services.has_service(domain, service):
             raise HomeAssistantError(f"Service {step['service']} is unavailable")
         payload = dict(arguments) if step["forward_arguments"] else {}
+        for forbidden in ("entity_id", "area_id", "device_id"):
+            payload.pop(forbidden, None)
         payload.update(step["data"])
         payload["entity_id"] = target  # Always force a single, checked target.
         async with asyncio.timeout(ACTION_TIMEOUT):
@@ -204,7 +210,7 @@ class ProxyRuntime:
                 break
         if "brightness" in self.last_on:
             result["brightness"] = self.last_on["brightness"]
-        if "effect" in self.last_on and not result:
+        if "effect" in self.last_on:
             result["effect"] = self.last_on["effect"]
         return result
 
@@ -228,14 +234,14 @@ class ProxyRuntime:
             try:
                 try:
                     await self._steps(steps, arguments)
-                except (HomeAssistantError, TimeoutError, ValueError) as err:
+                except Exception as err:
                     primary_error = f"{type(err).__name__}: {err}"[:280]
                     self._set_error(f"action:{action}", f"Primary action failed: {primary_error}")
                     if not backup:
                         raise HomeAssistantError(f"Proxy action {action} failed: {primary_error}") from err
                     try:
                         await self._steps(backup, arguments)
-                    except (HomeAssistantError, TimeoutError, ValueError) as backup_err:
+                    except Exception as backup_err:
                         self._set_error(f"action:{action}", f"Primary: {primary_error}; backup failed: {backup_err}")
                         raise HomeAssistantError(f"Proxy action {action} and its backup failed") from backup_err
                     # Keep the primary error visible while backup is in use.
