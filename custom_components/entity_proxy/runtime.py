@@ -38,6 +38,7 @@ class ProxyRuntime:
         self.tracked = dependencies(self.source, self.state_rules, self.action_rules)
         self.errors: dict[str, str] = {}
         self.virtual_state: str | None = None
+        self.proxy_entity_id: str | None = None
         self.last_on: dict = {}
         self._callbacks: set[Callable[[], None]] = set()
         self._lock = asyncio.Lock()
