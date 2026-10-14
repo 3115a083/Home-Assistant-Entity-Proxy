@@ -14,6 +14,8 @@ jobs:
         run: python -m compileall -q custom_components/entity_proxy
       - name: Run policy unit tests
         run: python -m unittest discover -s tests -v
+      - name: Verify release metadata matches changelog
+        run: python scripts/release_metadata.py --check
       - name: Validate JSON manifests and translations
         run: |
           python - <<'PY'
