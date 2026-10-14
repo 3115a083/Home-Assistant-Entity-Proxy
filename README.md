@@ -2,7 +2,7 @@
 
 A configurable, event-driven Home Assistant custom integration that wraps an existing entity, selectively overrides its reported state/attributes, and replaces individual service actions with safe, targeted Home Assistant services. Includes fallbacks and a per-proxy error sensor.
 
-> **Status: v0.1.0, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
+> **Status: v0.1.1, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
 
 ## Supported entities
 
@@ -29,7 +29,7 @@ The goal is to preserve the **standard interface** of each supported entity, inc
 3. Open **Settings → Devices & services → Add integration → Entity Proxy**.
 4. Choose the source entity and a name.
 5. Add rules using the multiline JSON editor, or leave the defaults `[]` and `{}` for a transparent proxy.
-6. Use **Configure** on the integration to edit rules later.
+6. Use **Configure** on the integration later to change the source entity, edit the light-off preset, or edit advanced JSON rules. All changes apply after an automatic entry reload.
 
 ### Manual
 
@@ -37,9 +37,28 @@ Copy `custom_components/entity_proxy` into `<config>/custom_components/entity_pr
 
 **Keep the source entity enabled.** You may hide it from dashboards, but disabling it will prevent the proxy from working.
 
+## Editing an existing proxy (no re-creation required)
+
+Go to **Settings → Devices & services → Entity Proxy → Configure**. Choose:
+
+- **Change source entity:** Select the renamed or replacement entity. Only entities in the *same domain* are allowed, so the proxy keeps its original type and entity ID. Literal references to the previous source in state and action rules are migrated automatically. References to other entities, such as WLED preset selectors, are unchanged. Historical virtual light state and saved color snapshots are reset when the source changes. The original integration data is never rewritten; the new source is saved in the entry options.
+- **Edit off preset** (lights only): Choose the `select` entity and the exact preset name. This updates the `turn_off` action while preserving all other action rules and state overrides. **Any previous `turn_off` fallback is replaced.** The editor intentionally does not add a power-cutting fallback.
+- **Edit advanced rules:** Edit or add state and action overrides using JSON. The current values are prefilled and input is retained when validation fails.
+
+The source entity and the preset select entity must remain enabled in Home Assistant. Hide the original *from dashboards* if desired, but do not disable it. Changing the source domain (e.g. `light` to `switch`) requires creating a new proxy.
+
 ## How rules work
 
-Rules are configured in two UI text boxes. They use **strict JSON**, not Jinja or executable Python. Add as many state/action rules as needed within the documented limits. An action not overridden is forwarded to the original entity. A state property not overridden mirrors its original source value.
+Advanced rules are configured in two UI text boxes. They use **strict JSON**, not Jinja or executable Python. Add as many state/action rules as needed within the documented limits. An action not overridden is forwarded to the original entity. A state property not overridden mirrors its original source value.
+
+### Troubleshooting: Invalid Entity Proxy rules
+
+The two editors have **different JSON types**:
+
+- **State overrides** must contain a JSON **array** (`[]`). An individual rule looks like `[{"attribute":"current_temperature","source":"sensor.room_temperature"}]`.
+- **Action overrides** must contain a JSON **object** (`{}`). WLED `turn_off`, `steps`, `fallback` and `reported_state` belong here, **not** in state overrides.
+
+Messages such as `Rules must contain a list` and `Unsupported state rule keys` usually mean an action rule was entered into the state editor. Version 0.1.1 highlights the affected field, shows a more specific validation error, preserves the user's input, and avoids writing normal form-validation failures into the warning log. No malformed configuration is silently accepted or executed.
 
 ### Example 1: WLED, suppress the white flash on switch-on
 

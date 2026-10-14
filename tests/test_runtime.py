@@ -116,6 +116,26 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         )
         return Runtime(hass, entry), services
 
+    async def test_source_override_is_used_for_event_subscription_and_actions(self):
+        runtime, services = self.make_runtime()
+        runtime.entry.options["source"] = "light.backup"
+        renamed = Runtime(runtime.hass, runtime.entry)
+        self.assertEqual(renamed.source, "light.backup")
+        self.assertIn("light.backup", renamed.tracked)
+        self.assertNotIn("light.wled", renamed.tracked)
+        await renamed.async_action("turn_off")
+        self.assertEqual(services.calls[0][1]["entity_id"], "light.backup")
+
+    async def test_snapshot_does_not_leak_to_new_source(self):
+        runtime, _ = self.make_runtime()
+        runtime._store.data = {"source": "light.wled", "virtual_state": "off", "last_on": {"brightness": 255}}
+        runtime.entry.options["source"] = "light.backup"
+        other = Runtime(runtime.hass, runtime.entry)
+        other._store.data = dict(runtime._store.data)
+        await other.async_start()
+        self.assertIsNone(other.virtual_state)
+        self.assertFalse(other.last_on)
+
     async def test_virtual_off_then_restore_light(self):
         rule = {"turn_off": {"steps": [{"service": "select.select_option", "target": "select.wled_preset", "data": {"option": "Light OFF"}, "forward_arguments": False}], "fallback": [], "reported_state": "off"}}
         runtime, services = self.make_runtime(rule)

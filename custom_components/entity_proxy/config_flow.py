@@ -1,4 +1,4 @@
-"""UI configuration and editing for Entity Proxy."""
+"""UI setup and safe post-install editing for Entity Proxy."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er, selector
 
 from .const import DOMAIN, SUPPORTED_DOMAINS
-from .rules import InvalidRules, parse_json, validate_all
+from .rules import InvalidRules, RuleFieldError, parse_configuration, remap_source_references, validate_all
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,10 +28,7 @@ def _rules_schema(state: str, actions: str) -> vol.Schema:
 
 
 def _load(raw: dict, source: str) -> dict:
-    state = parse_json(raw["state_rules"], list)
-    actions = parse_json(raw["action_rules"], dict)
-    state, actions = validate_all(source, state, actions)
-    return {"state_rules": state, "action_rules": actions}
+    return parse_configuration(source, raw["state_rules"], raw["action_rules"])
 
 
 def _no_proxy_refs(hass, source: str, rules: dict) -> bool:
@@ -45,6 +42,25 @@ def _no_proxy_refs(hass, source: str, rules: dict) -> bool:
         ent is not None and ent.platform == DOMAIN
         for entity_id in ids if (ent := registry.async_get(entity_id)) is not None
     )
+
+
+def _effective_source(entry) -> str:
+    """Old entries keep their original source; edited entries use options."""
+    return entry.options.get("source", entry.data["source"])
+
+
+def _preset_selection(action_rules: dict) -> tuple[str | None, str | None]:
+    """Prefill the editor if a normal WLED-style off override exists."""
+    off_rule = action_rules.get("turn_off", {})
+    steps = off_rule.get("steps", [])
+    if len(steps) != 1 or steps[0].get("service") != "select.select_option":
+        return None, None
+    step = steps[0]
+    option = step.get("data", {}).get("option")
+    target = step.get("target")
+    if not isinstance(option, str) or not isinstance(target, str):
+        return None, None
+    return target, option
 
 
 class EntityProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -81,14 +97,20 @@ class EntityProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_rules(self, user_input=None):
         errors = {}
+        problem = ""
         if user_input is not None:
             try:
                 rules = _load(user_input, self._source)
                 if not _no_proxy_refs(self.hass, self._source, rules):
                     raise InvalidRules("Other Entity Proxy entities cannot be used in rules")
+            except RuleFieldError as err:
+                errors[err.field] = "invalid_state_rules" if err.field == "state_rules" else "invalid_action_rules"
+                problem = str(err)[:300]
+                _LOGGER.debug("Invalid Entity Proxy configuration: %s", problem)
             except InvalidRules as err:
-                _LOGGER.warning("Invalid Entity Proxy rules: %s", err)
                 errors["base"] = "invalid_rules"
+                problem = str(err)[:300]
+                _LOGGER.debug("Invalid Entity Proxy configuration: %s", problem)
             else:
                 return self.async_create_entry(
                     title=self._name,
@@ -97,7 +119,11 @@ class EntityProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
         return self.async_show_form(
             step_id="rules", errors=errors,
-            data_schema=_rules_schema("[]", "{}"),
+            description_placeholders={"problem": f"\n\n**Validation error:** {problem}" if problem else ""},
+            data_schema=_rules_schema(
+                (user_input or {}).get("state_rules", "[]"),
+                (user_input or {}).get("action_rules", "{}"),
+            ),
         )
 
     @staticmethod
@@ -107,25 +133,113 @@ class EntityProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class ProxyOptionsFlow(config_entries.OptionsFlow):
-    """Edit rules in the UI, applying changes through a reload."""
+    """Edit source, off preset and advanced rules without losing the proxy ID."""
 
     async def async_step_init(self, user_input=None):
+        menu = ["source", "rules"]
+        if _effective_source(self.config_entry).startswith("light."):
+            menu.insert(1, "preset")
+        return self.async_show_menu(step_id="init", menu_options=menu)
+
+    async def async_step_source(self, user_input=None):
         entry = self.config_entry
+        current = _effective_source(entry)
+        domain = entry.data["source"].split(".", 1)[0]
         errors = {}
         if user_input is not None:
-            try:
-                rules = _load(user_input, entry.data["source"])
-                if not _no_proxy_refs(self.hass, entry.data["source"], rules):
-                    raise InvalidRules("Other Entity Proxy entities cannot be used in rules")
-            except InvalidRules as err:
-                _LOGGER.warning("Invalid Entity Proxy options: %s", err)
-                errors["base"] = "invalid_rules"
+            new_source = user_input["source"]
+            registry_ent = er.async_get(self.hass).async_get(new_source)
+            if new_source.split(".", 1)[0] != domain:
+                errors["base"] = "source_domain"
+            elif registry_ent is not None and registry_ent.platform == DOMAIN:
+                errors["base"] = "proxy_source"
             else:
-                return self.async_create_entry(title="", data=rules)
+                options = remap_source_references(entry.options, current, new_source)
+                try:
+                    states, actions = validate_all(new_source, options.get("state_rules", []), options.get("action_rules", {}))
+                    options.update({"state_rules": states, "action_rules": actions})
+                    if not _no_proxy_refs(self.hass, new_source, options):
+                        raise InvalidRules("Proxy entities are not valid dependencies")
+                except InvalidRules:
+                    errors["base"] = "invalid_rules"
+                else:
+                    return self.async_create_entry(title="", data=options)
         return self.async_show_form(
-            step_id="init", errors=errors,
+            step_id="source", errors=errors,
+            data_schema=vol.Schema({
+                vol.Required("source", default=(user_input or {}).get("source", current)):
+                    selector.EntitySelector(selector.EntitySelectorConfig(domain=[domain]))
+            }),
+        )
+
+    async def async_step_preset(self, user_input=None):
+        entry = self.config_entry
+        source = _effective_source(entry)
+        if not source.startswith("light."):
+            return self.async_abort(reason="not_light")
+        actions = entry.options.get("action_rules", {})
+        preset_entity, preset_name = _preset_selection(actions)
+        errors = {}
+        if user_input is not None:
+            target = user_input["preset_entity"]
+            option = user_input["preset_name"].strip()
+            if not option:
+                errors["preset_name"] = "empty_preset"
+            else:
+                updated_actions = dict(actions)
+                updated_actions["turn_off"] = {
+                    "steps": [{
+                        "service": "select.select_option",
+                        "target": target,
+                        "data": {"option": option},
+                    }],
+                    "reported_state": "off",
+                }
+                try:
+                    states, actions_clean = validate_all(source, entry.options.get("state_rules", []), updated_actions)
+                    updated = {**entry.options, "state_rules": states, "action_rules": actions_clean}
+                    if not _no_proxy_refs(self.hass, source, updated):
+                        raise InvalidRules("Proxy entities are not valid dependencies")
+                except InvalidRules:
+                    errors["base"] = "invalid_rules"
+                else:
+                    return self.async_create_entry(title="", data=updated)
+        preset_schema = {
+            vol.Required("preset_entity", default=(user_input or {}).get("preset_entity", preset_entity))
+            if (user_input or {}).get("preset_entity", preset_entity) else vol.Required("preset_entity"):
+                selector.EntitySelector(selector.EntitySelectorConfig(domain=["select"])),
+            vol.Required("preset_name", default=(user_input or {}).get("preset_name", preset_name or "Light OFF")):
+                selector.TextSelector(),
+        }
+        return self.async_show_form(
+            step_id="preset", errors=errors, data_schema=vol.Schema(preset_schema),
+        )
+
+    async def async_step_rules(self, user_input=None):
+        entry = self.config_entry
+        source = _effective_source(entry)
+        errors = {}
+        problem = ""
+        if user_input is not None:
+            try:
+                rules = _load(user_input, source)
+                if not _no_proxy_refs(self.hass, source, rules):
+                    raise InvalidRules("Other Entity Proxy entities cannot be used in rules")
+            except RuleFieldError as err:
+                errors[err.field] = "invalid_state_rules" if err.field == "state_rules" else "invalid_action_rules"
+                problem = str(err)[:300]
+                _LOGGER.debug("Invalid Entity Proxy options: %s", problem)
+            except InvalidRules as err:
+                errors["base"] = "invalid_rules"
+                problem = str(err)[:300]
+                _LOGGER.debug("Invalid Entity Proxy options: %s", problem)
+            else:
+                return self.async_create_entry(title="", data={**entry.options, **rules})
+        return self.async_show_form(
+            step_id="rules", errors=errors,
+            description_placeholders={"problem": f"\n\n**Validation error:** {problem}" if problem else ""},
             data_schema=_rules_schema(
-                json.dumps(entry.options.get("state_rules", []), indent=2),
-                json.dumps(entry.options.get("action_rules", {}), indent=2),
+                (user_input or {}).get("state_rules", json.dumps(entry.options.get("state_rules", []), indent=2)),
+                (user_input or {}).get("action_rules", json.dumps(entry.options.get("action_rules", {}), indent=2)),
             ),
         )

@@ -17,7 +17,10 @@ PLATFORMS = [
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Start one proxy with only the source domain and its error sensor."""
-    validate_all(entry.data["source"], entry.options.get("state_rules", []), entry.options.get("action_rules", {}))
+    source = entry.options.get("source", entry.data["source"])
+    if source.split(".", 1)[0] != entry.data["source"].split(".", 1)[0]:
+        raise ValueError("The proxy source domain cannot change after creation")
+    validate_all(source, entry.options.get("state_rules", []), entry.options.get("action_rules", {}))
     runtime = ProxyRuntime(hass, entry)
     runtime.validate_references()
     await runtime.async_start()

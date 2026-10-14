@@ -1,6 +1,7 @@
 """Dependency-free tests for policy and source fallback behavior."""
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import types
@@ -16,7 +17,7 @@ for name in ("const", "rules"):
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
-from entity_proxy.rules import InvalidRules, parse_json, pick_value, validate_actions, validate_all, validate_states
+from entity_proxy.rules import InvalidRules, RuleFieldError, parse_configuration, parse_json, pick_value, remap_source_references, validate_actions, validate_all, validate_states
 
 
 class State:
@@ -26,6 +27,32 @@ class State:
 
 
 class RulesTests(unittest.TestCase):
+    def test_config_fields_are_not_interchangeable(self):
+        with self.assertRaises(RuleFieldError) as caught:
+            parse_configuration("light.wled", '{"turn_off": {"steps": []}}', "{}")
+        self.assertEqual(caught.exception.field, "state_rules")
+        self.assertIn("JSON array", str(caught.exception))
+
+    def test_state_action_keys_show_clear_error(self):
+        with self.assertRaises(RuleFieldError) as caught:
+            parse_configuration("light.wled", '[{"turn_off": {"steps": []}}]', "{}")
+        self.assertEqual(caught.exception.field, "state_rules")
+        self.assertIn("turn_off", str(caught.exception))
+        self.assertIn("Action overrides", str(caught.exception))
+
+    def test_invalid_action_format_has_correct_field(self):
+        with self.assertRaises(RuleFieldError) as caught:
+            parse_configuration("light.wled", "[]", '[{"turn_off": {}}]')
+        self.assertEqual(caught.exception.field, "action_rules")
+        self.assertIn("JSON object", str(caught.exception))
+
+    def test_wled_configuration_parses_into_separate_fields(self):
+        data = parse_configuration("light.wled", "[]", json.dumps({
+            "turn_off": {"steps": [{"service": "select.select_option", "target": "select.wled_preset", "data": {"option": "Light OFF"}}], "reported_state": "off"}
+        }))
+        self.assertEqual(data["state_rules"], [])
+        self.assertEqual(data["action_rules"]["turn_off"]["reported_state"], "off")
+
     def test_blank_configuration(self):
         self.assertEqual(validate_all("light.wled", [], {}), ([], {}))
 
@@ -87,6 +114,27 @@ class RulesTests(unittest.TestCase):
     def test_many_rules_limit(self):
         with self.assertRaises(InvalidRules):
             validate_states([{"attribute": f"x{i}", "value": i} for i in range(49)], "sensor.a")
+
+    def test_remap_source_preserves_other_actions_and_preset(self):
+        original = {
+            "state_rules": [{"attribute": "brightness", "source": "light.old"},
+                            {"attribute": "current_temperature", "source": "sensor.room", "fallback": "light.old"}],
+            "action_rules": {
+                "turn_off": {"steps": [{"service": "select.select_option", "target": "select.wled_preset", "data": {"option": "Light OFF"}}], "fallback": [], "reported_state": "off"},
+                "turn_on": {"steps": [{"service": "light.turn_on", "target": "light.old", "data": {}}],
+                            "fallback": [{"service": "light.turn_on", "target": "light.backup"}], "reported_state": "on"},
+            },
+        }
+        updated = remap_source_references(original, "light.old", "light.renamed")
+        self.assertEqual(updated["source"], "light.renamed")
+        self.assertEqual(updated["state_rules"][0]["source"], "light.renamed")
+        self.assertEqual(updated["state_rules"][1]["source"], "sensor.room")
+        self.assertEqual(updated["state_rules"][1]["fallback"], "light.renamed")
+        self.assertEqual(updated["action_rules"]["turn_on"]["steps"][0]["target"], "light.renamed")
+        self.assertEqual(updated["action_rules"]["turn_on"]["fallback"][0]["target"], "light.backup")
+        self.assertEqual(updated["action_rules"]["turn_off"]["steps"][0]["data"], {"option": "Light OFF"})
+        self.assertEqual(original["state_rules"][0]["source"], "light.old")
+        validate_all("light.renamed", updated["state_rules"], updated["action_rules"])
 
     def test_safe_wled_rule(self):
         actions = {"turn_off": {"steps": [{"service": "select.select_option", "target": "select.wled_preset", "data": {"option": "Light OFF"}}], "reported_state": "off"}}

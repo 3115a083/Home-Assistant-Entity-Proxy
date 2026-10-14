@@ -26,6 +26,14 @@ class InvalidRules(ValueError):
     """Invalid or unsafe proxy configuration."""
 
 
+class RuleFieldError(InvalidRules):
+    """A validation error specific to one configuration editor field."""
+
+    def __init__(self, field: str, detail: str) -> None:
+        super().__init__(detail)
+        self.field = field
+
+
 def valid_entity(entity_id: Any) -> bool:
     """Prevent broad calls, wildcard selectors, and malformed entity IDs."""
     return isinstance(entity_id, str) and bool(ENTITY_RE.fullmatch(entity_id)) and len(entity_id) <= 255
@@ -60,11 +68,18 @@ def validate_states(raw: Any, primary: str) -> list[dict[str, Any]]:
         raise InvalidRules("state_rules must be an array of at most 48 rules")
     seen: set[str] = set()
     cleaned = []
-    for item in raw:
-        if not isinstance(item, dict) or set(item) - {
+    for index, item in enumerate(raw, start=1):
+        if not isinstance(item, dict):
+            raise InvalidRules(f"State rule {index} must be a JSON object")
+        unknown = set(item) - {
             "attribute", "source", "source_attribute", "fallback", "fallback_attribute", "value", "fallback_value"
-        }:
-            raise InvalidRules("Unsupported state rule keys")
+        }
+        if unknown:
+            keys = ", ".join(sorted(str(key)[:40] for key in unknown)[:6])
+            raise InvalidRules(
+                f"State rule {index} has unsupported keys: {keys}. "
+                "Action keys such as 'turn_off', 'steps' and 'reported_state' belong in Action overrides."
+            )
         attr = item.get("attribute")
         if not isinstance(attr, str) or not FIELD_RE.fullmatch(attr) or attr in RESERVED_ATTRIBUTES or attr in seen:
             raise InvalidRules("Invalid, reserved, or duplicate target attribute")
@@ -200,3 +215,62 @@ def validate_all(primary: str, states: Any, actions: Any) -> tuple[list[dict], d
     state_rules = validate_states(states, primary)
     action_rules = validate_actions(actions, primary)
     return state_rules, action_rules
+
+
+def parse_configuration(primary: str, state_text: str, action_text: str) -> dict[str, Any]:
+    """Parse separate UI editors and associate validation errors with the right field.
+
+    Never silently swap, discard or reinterpret submitted rules: changing the
+    meaning of an action would be dangerous for switches and thermostats.
+    """
+    try:
+        states = parse_json(state_text, list)
+    except InvalidRules as err:
+        raise RuleFieldError(
+            "state_rules", f"State overrides must be a JSON array, e.g. []. {err}"
+        ) from err
+    try:
+        actions = parse_json(action_text, dict)
+    except InvalidRules as err:
+        raise RuleFieldError(
+            "action_rules", f"Action overrides must be a JSON object, e.g. {{}}. {err}"
+        ) from err
+    try:
+        cleaned_states = validate_states(states, primary)
+    except InvalidRules as err:
+        raise RuleFieldError("state_rules", str(err)) from err
+    try:
+        cleaned_actions = validate_actions(actions, primary)
+    except InvalidRules as err:
+        raise RuleFieldError("action_rules", str(err)) from err
+    return {"state_rules": cleaned_states, "action_rules": cleaned_actions}
+
+
+def remap_source_references(options: dict, old: str, new: str) -> dict:
+    """Move exact references to a renamed source, preserving every other rule.
+
+    This is deliberately limited to literal entity IDs, not string replacement
+    inside service data such as preset names. The UI separately validates
+    domain preservation and forbids other Entity Proxy dependencies.
+    """
+    updated = dict(options)
+    updated["source"] = new
+    states = []
+    for rule in options.get("state_rules", []):
+        item = dict(rule)
+        for key in ("source", "fallback"):
+            if item.get(key) == old:
+                item[key] = new
+        states.append(item)
+    updated["state_rules"] = states
+    actions = {}
+    for name, rule in options.get("action_rules", {}).items():
+        revised = dict(rule)
+        for key in ("steps", "fallback"):
+            revised[key] = [
+                {**step, "target": new} if step.get("target") == old else dict(step)
+                for step in rule.get(key, [])
+            ]
+        actions[name] = revised
+    updated["action_rules"] = actions
+    return updated

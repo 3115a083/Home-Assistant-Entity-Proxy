@@ -1,0 +1,72 @@
+{
+  "title": "Entity Proxy",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Entity Proxy erstellen",
+        "description": "Wähle eine vorhandene Entität. Die Quellentität darf ausgeblendet, aber nicht deaktiviert werden.",
+        "data": {
+          "name": "Proxy-Name",
+          "source": "Quellentität"
+        }
+      },
+      "rules": {
+        "title": "Regeln konfigurieren",
+        "description": "Zustandsregeln müssen eine JSON-Liste wie `[]` sein. Aktionsregeln müssen ein JSON-Objekt wie `{}` sein. WLED-Regeln für `turn_off` gehören in **Aktionsregeln**, nicht in Zustandsregeln.{problem}",
+        "data": {
+          "state_rules": "Zustandsregeln (JSON-Liste)",
+          "action_rules": "Aktionsregeln und Backups (JSON-Objekt)"
+        }
+      }
+    },
+    "error": {
+      "invalid_rules": "Ungültige oder unsichere Regeln. Details siehe oben.",
+      "proxy_source": "Ein Proxy darf keinen anderen Entity Proxy als Quelle verwenden.",
+      "unsupported": "Dieser Entitätstyp wird nicht unterstützt.",
+      "invalid_state_rules": "Ungültige Zustandsregeln. Erforderlich ist eine JSON-Liste ([]). Details siehe oben.",
+      "invalid_action_rules": "Ungültige Aktionsregeln. Erforderlich ist ein JSON-Objekt ({}). Details siehe oben."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Proxy-Einstellungen",
+        "description": "Wähle, was du nachträglich ändern möchtest."
+      },
+      "source": {
+        "title": "Quellentität ändern",
+        "description": "Wähle die umbenannte oder ersetzte Quellentität. Der Entitätstyp muss gleich bleiben. Exakte Verweise auf die alte Quellentität in Regeln werden aktualisiert; andere Regeln bleiben erhalten.",
+        "data": {
+          "source": "Neue Quellentität"
+        }
+      },
+      "preset": {
+        "title": "Ausschalt-Preset bearbeiten",
+        "description": "Wähle den WLED-Preset-Selektor und den Preset-Namen. Dies ersetzt ausschließlich die `turn_off`-Aktionsregel, einschließlich eines dort vorhandenen Backups. Alle anderen Regeln bleiben unverändert. Der Preset muss das Licht schwarz schalten und WLED eingeschaltet lassen.",
+        "data": {
+          "preset_entity": "Preset-Auswahl-Entität",
+          "preset_name": "Preset-Name (exakt)"
+        }
+      },
+      "rules": {
+        "title": "Erweiterte Regeln bearbeiten",
+        "description": "Zustandsregeln: JSON-Liste `[]`. Aktionsregeln: JSON-Objekt `{}`. Fehlerhafte Eingaben bleiben erhalten.{problem}",
+        "data": {
+          "state_rules": "Zustandsregeln (JSON-Liste)",
+          "action_rules": "Aktionsregeln und Backups (JSON-Objekt)"
+        }
+      }
+    },
+    "error": {
+      "invalid_rules": "Ungültige oder unsichere Regeln. Details siehe oben.",
+      "invalid_state_rules": "Ungültige Zustandsregeln. Erforderlich ist eine JSON-Liste ([]). Details siehe oben.",
+      "invalid_action_rules": "Ungültige Aktionsregeln. Erforderlich ist ein JSON-Objekt ({}). Details siehe oben.",
+      "source_domain": "Die Quellentität muss denselben Entitätstyp behalten.",
+      "proxy_source": "Ein anderer Entity Proxy darf keine Quelle sein.",
+      "empty_preset": "Preset-Name darf nicht leer sein."
+    },
+    "abort": {
+      "not_light": "Preset-Bearbeitung ist nur für Lichtentitäten verfügbar."
+    }
+  }
+}

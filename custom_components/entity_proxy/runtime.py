@@ -32,7 +32,7 @@ class ProxyRuntime:
     def __init__(self, hass: HomeAssistant, entry: Any) -> None:
         self.hass = hass
         self.entry = entry
-        self.source: str = entry.data["source"]
+        self.source: str = entry.options.get("source", entry.data["source"])
         self.state_rules: list[dict] = entry.options.get("state_rules", [])
         self.action_rules: dict = entry.options.get("action_rules", {})
         self.tracked = dependencies(self.source, self.state_rules, self.action_rules)
@@ -48,9 +48,11 @@ class ProxyRuntime:
     async def async_start(self) -> None:
         saved = await self._store.async_load() or {}
         if isinstance(saved, dict):
-            if saved.get("virtual_state") in ("on", "off", None):
+            if (saved.get("source", self.entry.data["source"]) == self.source
+                and saved.get("virtual_state") in ("on", "off", None)):
                 self.virtual_state = saved.get("virtual_state")
-            if isinstance(saved.get("last_on"), dict):
+            if (saved.get("source", self.entry.data["source"]) == self.source
+                and isinstance(saved.get("last_on"), dict)):
                 self.last_on = {
                     k: v for k, v in saved["last_on"].items() if k in SNAPSHOT_KEYS
                 }
@@ -144,7 +146,7 @@ class ProxyRuntime:
     @callback
     def _save(self) -> None:
         self._store.async_delay_save(
-            lambda: {"virtual_state": self.virtual_state, "last_on": self.last_on}, 2
+            lambda: {"source": self.source, "virtual_state": self.virtual_state, "last_on": self.last_on}, 2
         )
 
     def source_state(self) -> Any:
