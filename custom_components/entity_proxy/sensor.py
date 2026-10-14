@@ -45,11 +45,14 @@ class ProxyErrorSensor(ProxyEntity, SensorEntity):
 
     _attr_icon = "mdi:alert-circle-outline"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_native_unit_of_measurement = "issues"
+    _attr_has_entity_name = True
+    _attr_translation_key = "errors"
 
     def __init__(self, runtime):
         super().__init__(runtime, role="errors")
-        self._attr_name = f"{runtime.entry.data['name']} Errors"
+        self._attr_translation_placeholders = {
+            "proxy_name": runtime.entry.data["name"],
+        }
 
     @property
     def available(self):
@@ -62,6 +65,8 @@ class ProxyErrorSensor(ProxyEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         return {
+            "proxy_name": self.runtime.entry.data["name"],
+            "source_entity": self.runtime.source,
             "issues": list(self.runtime.errors.values())[:MAX_ERRORS],
             "issue_count": len(self.runtime.errors),
         }
@@ -75,10 +80,14 @@ class ProxyConfigurationSensor(ProxyEntity, SensorEntity):
 
     _attr_icon = "mdi:cog-check-outline"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_has_entity_name = True
+    _attr_translation_key = "configuration"
 
     def __init__(self, runtime):
         super().__init__(runtime, role="configuration")
-        self._attr_name = f"{runtime.entry.data['name']} Configuration"
+        self._attr_translation_placeholders = {
+            "proxy_name": runtime.entry.data["name"],
+        }
 
     @property
     def available(self):
@@ -97,6 +106,7 @@ class ProxyConfigurationSensor(ProxyEntity, SensorEntity):
             None,
         )
         result = {
+            "proxy_name": self.runtime.entry.data["name"],
             "source_entity": self.runtime.source,
             "state_override_count": len(self.runtime.state_rules),
             "state_overrides": [
