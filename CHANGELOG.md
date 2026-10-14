@@ -4,6 +4,21 @@ All notable changes to Entity Proxy are documented here.
 
 The project uses [Semantic Versioning](https://semver.org/). GitHub Releases use a `v` prefix (for example `v0.1.3`); the Home Assistant integration manifest uses the same version without the prefix.
 
+## [0.1.5] - 2026-10-14
+
+### Added
+- Expose a device-linked, read-only per-proxy Configuration diagnostic sensor showing the active source, state and action overrides, virtual state, off-preset entity and preset name, and active issue count.
+- Add tests for device association, missing device links, diagnostics, source changes, and the Home Assistant options-flow entry point.
+- Document where to find Configure, the Errors sensor, and the Configuration sensor, with a safe troubleshooting path for stale HACS installations.
+
+### Fixed
+- Remove duplicate device-link initialization while keeping 2026.8+ source-device association.
+- Make the distinction between the original entity, the proxy entity, and diagnostic entities explicit in the English README.
+
+### Notes
+- The proxy does not intercept calls made directly to the original light entity. Use the proxy in dashboards and automations.
+- A real Home Assistant installation test is still required; device-specific behavior must be validated before relying on fallback actions.
+
 ## [0.1.4] - 2026-10-14
 
 ### Added
