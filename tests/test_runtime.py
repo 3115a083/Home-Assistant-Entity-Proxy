@@ -1,0 +1,157 @@
+"""Isolated dispatcher tests using lightweight HA service/store stubs."""
+
+import importlib.util
+from pathlib import Path
+import sys
+import types
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1] / "custom_components" / "entity_proxy"
+pkg = sys.modules.get("entity_proxy")
+if pkg is None:
+    pkg = types.ModuleType("entity_proxy")
+    pkg.__path__ = [str(ROOT)]
+    sys.modules["entity_proxy"] = pkg
+for name in ("const", "rules"):
+    if f"entity_proxy.{name}" not in sys.modules:
+        spec = importlib.util.spec_from_file_location(f"entity_proxy.{name}", ROOT / f"{name}.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = mod
+        spec.loader.exec_module(mod)
+
+homeassistant = types.ModuleType("homeassistant")
+ha_core = types.ModuleType("homeassistant.core")
+ha_core.HomeAssistant = object
+ha_core.callback = lambda fn: fn
+ha_exceptions = types.ModuleType("homeassistant.exceptions")
+ha_exceptions.HomeAssistantError = type("HomeAssistantError", (Exception,), {})
+helpers = types.ModuleType("homeassistant.helpers")
+registry = types.ModuleType("homeassistant.helpers.entity_registry")
+registry.async_get = lambda hass: hass.registry
+events = types.ModuleType("homeassistant.helpers.event")
+events.async_track_state_change_event = lambda hass, ids, callback: (lambda: None)
+storage = types.ModuleType("homeassistant.helpers.storage")
+
+
+class Store:
+    def __init__(self, *args):
+        self.data = None
+
+    def async_delay_save(self, get_data, seconds):
+        self.data = get_data()
+
+    async def async_load(self):
+        return self.data
+
+
+storage.Store = Store
+sys.modules.update({
+    "homeassistant": homeassistant,
+    "homeassistant.core": ha_core,
+    "homeassistant.exceptions": ha_exceptions,
+    "homeassistant.helpers": helpers,
+    "homeassistant.helpers.entity_registry": registry,
+    "homeassistant.helpers.event": events,
+    "homeassistant.helpers.storage": storage,
+})
+spec = importlib.util.spec_from_file_location("entity_proxy.runtime", ROOT / "runtime.py")
+runtime_module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = runtime_module
+spec.loader.exec_module(runtime_module)
+Runtime = runtime_module.ProxyRuntime
+
+
+class State:
+    def __init__(self, value="on", attributes=None):
+        self.state = value
+        self.attributes = attributes or {}
+
+
+class States:
+    def __init__(self, states):
+        self.states = states
+
+    def get(self, key):
+        return self.states.get(key)
+
+
+class Registry:
+    def __init__(self):
+        self.proxies = set()
+
+    def async_get(self, entity_id):
+        return types.SimpleNamespace(platform="entity_proxy") if entity_id in self.proxies else None
+
+
+class Services:
+    def __init__(self):
+        self.calls = []
+        self.fail = set()
+
+    def has_service(self, domain, service):
+        return True
+
+    async def async_call(self, domain, service, data, blocking):
+        key = f"{domain}.{service}"
+        self.calls.append((key, data))
+        if data["entity_id"] in self.fail:
+            raise ha_exceptions.HomeAssistantError("device offline")
+
+
+class RuntimeTests(unittest.IsolatedAsyncioTestCase):
+    def make_runtime(self, action_rules=None):
+        services = Services()
+        hass = types.SimpleNamespace(
+            states=States({
+                "light.wled": State("on", {"rgbww_color": [60, 20, 10, 5, 8], "brightness": 150, "color_mode": "rgbww"}),
+                "select.wled_preset": State("Normal"),
+                "light.backup": State("on"),
+            }),
+            registry=Registry(),
+            services=services,
+        )
+        entry = types.SimpleNamespace(
+            entry_id="testing", data={"source": "light.wled", "name": "Test"},
+            options={"state_rules": [], "action_rules": action_rules or {}},
+        )
+        return Runtime(hass, entry), services
+
+    async def test_virtual_off_then_restore_light(self):
+        rule = {"turn_off": {"steps": [{"service": "select.select_option", "target": "select.wled_preset", "data": {"option": "Light OFF"}, "forward_arguments": False}], "fallback": [], "reported_state": "off"}}
+        runtime, services = self.make_runtime(rule)
+        runtime._remember_light(runtime.source_state())
+        await runtime.async_action("turn_off")
+        self.assertEqual(runtime.virtual_state, "off")
+        self.assertEqual(services.calls[0][0], "select.select_option")
+        await runtime.async_action("turn_on")
+        self.assertIsNone(runtime.virtual_state)
+        self.assertEqual(services.calls[1][0], "light.turn_on")
+        self.assertEqual(services.calls[1][1]["rgbww_color"], [60, 20, 10, 5, 8])
+        self.assertEqual(services.calls[1][1]["brightness"], 150)
+
+    async def test_fallback_and_issue_reporting(self):
+        rule = {"turn_off": {"steps": [{"service": "select.select_option", "target": "select.wled_preset", "data": {}, "forward_arguments": False}], "fallback": [{"service": "light.turn_off", "target": "light.backup", "data": {}, "forward_arguments": False}], "reported_state": "off"}}
+        runtime, services = self.make_runtime(rule)
+        services.fail.add("select.wled_preset")
+        await runtime.async_action("turn_off")
+        self.assertEqual([c[0] for c in services.calls], ["select.select_option", "light.turn_off"])
+        self.assertIn("action:turn_off", runtime.errors)
+
+    async def test_all_actions_fail_do_not_change_state(self):
+        rule = {"turn_off": {"steps": [{"service": "select.select_option", "target": "select.wled_preset", "data": {}, "forward_arguments": False}], "fallback": [], "reported_state": "off"}}
+        runtime, services = self.make_runtime(rule)
+        services.fail.add("select.wled_preset")
+        with self.assertRaises(ha_exceptions.HomeAssistantError):
+            await runtime.async_action("turn_off")
+        self.assertIsNone(runtime.virtual_state)
+
+    async def test_reject_proxy_cycle_before_call(self):
+        runtime, services = self.make_runtime()
+        runtime.hass.registry.proxies.add("light.wled")
+        with self.assertRaises(ha_exceptions.HomeAssistantError):
+            await runtime.async_action("turn_off")
+        self.assertEqual(services.calls, [])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,28 @@
+{
+  "title": "Entity Proxy",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Create entity proxy",
+        "description": "Choose an existing entity to wrap. You can hide the original in your dashboard, but do not disable it.",
+        "data": {"name": "Proxy name", "source": "Source entity"}
+      },
+      "rules": {
+        "title": "Configure rules",
+        "description": "Enter JSON arrays/objects. Leave [] and {} for transparent pass-through. State rules override attributes; action rules replace selected service actions. See the README for examples and security constraints.",
+        "data": {"state_rules": "State overrides (JSON array)", "action_rules": "Action overrides and backups (JSON object)"}
+      }
+    },
+    "error": {"invalid_rules": "Invalid or unsafe JSON rules. Review the logs and README.", "proxy_source": "A proxy cannot wrap another Entity Proxy entity.", "unsupported": "Unsupported entity domain."}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edit proxy rules",
+        "description": "Rules are updated when you save. See the README for JSON examples.",
+        "data": {"state_rules": "State overrides (JSON array)", "action_rules": "Action overrides and backups (JSON object)"}
+      }
+    },
+    "error": {"invalid_rules": "Invalid or unsafe rules. Review the logs and README."}
+  }
+}
