@@ -92,6 +92,16 @@ class LightTests(unittest.IsolatedAsyncioTestCase):
         })
         self.assertIsNone(light.color_mode)
 
+    async def test_light_platform_exposes_one_control_entity(self):
+        light = self.make_light()
+        added = []
+        hass = types.SimpleNamespace(data={"entity_proxy": {"configured": light.runtime}})
+        entry = types.SimpleNamespace(entry_id="configured")
+        await module.async_setup_entry(hass, entry, lambda entities: added.extend(entities))
+        self.assertEqual(len(added), 1)
+        self.assertIsInstance(added[0], ProxyLight)
+        self.assertEqual(added[0]._attr_unique_id, "configured_proxy")
+
     async def test_unique_control_name_and_assigned_entity_id(self):
         light = self.make_light()
         self.assertEqual(light._attr_name, "Entity Proxy: Desk")
