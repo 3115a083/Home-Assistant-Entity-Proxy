@@ -4,6 +4,23 @@ All notable changes to Entity Proxy are documented here.
 
 The project uses [Semantic Versioning](https://semver.org/). GitHub Releases use a `v` prefix (for example `v0.1.3`); the Home Assistant integration manifest uses the same version without the prefix.
 
+## [0.1.7] - 2026-10-14
+
+### Fixed
+- Give every controllable Entity Proxy a clearly identifiable name ("Entity Proxy: <name>") without changing its stable unique ID.
+- Prevent invalid, missing or temporarily inconsistent light color-mode data from blocking the proxy light's creation or updates.
+- Ensure light color modes exposed to Home Assistant satisfy its supported-mode rules.
+
+### Added
+- Report the actual registered control entity ID, source entity type and registration status in the Configuration diagnostic sensor.
+- Report a missing control entity in the Errors sensor, including instructions to inspect disabled entities and Home Assistant logs.
+- Add regression tests covering the light platform, RGBWW colors, missing modes, disabled/source diagnostic cases and registration.
+
+### Notes
+- This release improves registration resilience and diagnostics; it does not establish the precise cause of a missing entity on an individual Home Assistant instance without its logs.
+- After updating, inspect the Configuration diagnostic sensor for `proxy_entity_id` and `registered` / `control_missing`. The original device entity must stay enabled.
+- Existing configuration entry IDs, unique IDs and action/state rules are preserved.
+
 ## [0.1.6] - 2026-10-14
 
 ### Fixed
