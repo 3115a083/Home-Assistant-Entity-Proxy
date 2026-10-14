@@ -2,7 +2,7 @@
 
 A configurable, event-driven Home Assistant custom integration that wraps an existing entity, selectively overrides its reported state/attributes, and replaces individual service actions with safe, targeted Home Assistant services. Includes fallbacks and a per-proxy error sensor.
 
-> **Status: v0.1.5, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
+> **Status: v0.1.6, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
 
 ## Supported entities
 
@@ -41,7 +41,7 @@ Entity Proxy uses semantic versions. Each HACS-installable version has:
 
 Releases are generated automatically from a version change on `main`, **only after checks pass**. Do not manually edit tags or overwrite published releases. The default branch is hidden in HACS to favor stable tagged versions.
 
-**Migrating an older HACS installation that shows a short Git commit hash:** Open HACS → Entity Proxy → three-dot menu → **Redownload**, explicitly select the latest release (`v0.1.5` or newer), and restart Home Assistant. HACS does not always prompt for the first tagged release when transitioning from an earlier commit-based install. Existing Home Assistant integration entries and their settings are retained by a normal HACS reinstall; keep a backup before changing versions.
+**Migrating an older HACS installation that shows a short Git commit hash:** Open HACS → Entity Proxy → three-dot menu → **Redownload**, explicitly select the latest release (`v0.1.6` or newer), and restart Home Assistant. HACS does not always prompt for the first tagged release when transitioning from an earlier commit-based install. Existing Home Assistant integration entries and their settings are retained by a normal HACS reinstall; keep a backup before changing versions.
 
 Find release notes at [GitHub Releases](https://github.com/3115a083/Home-Assistant-Entity-Proxy/releases).
 
@@ -50,6 +50,14 @@ Find release notes at [GitHub Releases](https://github.com/3115a083/Home-Assista
 Copy `custom_components/entity_proxy` into `<config>/custom_components/entity_proxy`, restart Home Assistant and proceed with step 3 above.
 
 **Keep the source entity enabled.** You may hide it from dashboards, but disabling it will prevent the proxy from working.
+
+## Clearly labeled Entity Proxy settings and diagnostics
+
+From release **v0.1.6**, the edit dialog is titled **Entity Proxy Einstellungen** on German Home Assistant installations. Its three choices have visible labels: **Quellentität ändern**, **Ausschalt-Preset ändern** (for light proxies), and **Zustands- und Aktionsregeln bearbeiten**. English installations use similarly explicit labels. Home Assistant requires these labels in `options.step.init.menu_options`, not just each submenu's title.
+
+The two diagnostics use the configured **proxy name**, not just generic `Configuration` and `Errors`. For example, the device page can show `Entity Proxy · Schlafzimmer WLED · Aktive Einstellungen` and `Entity Proxy · Schlafzimmer WLED · Fehlerstatus`. They remain attached to the source device when it exists. The original diagnostic entities keep their `unique_id` and registry entity IDs.
+
+After upgrading, **restart Home Assistant** and refresh the browser/app (frontend translation caching can outlive an integration restart). If a diagnostic name was manually overridden in Home Assistant, that user-defined entity name may take precedence; reset the customized name in the entity settings to see the generated label.
 
 ## Editing an existing proxy (no re-creation required)
 
@@ -219,7 +227,7 @@ If an action has **no** override, the proxy passes the original parameters to th
 
 ## Diagnostics and fallbacks
 
-Find both diagnostic entities under **Settings → Devices & services → Entities**, searching for your proxy's name plus `Errors` or `Configuration`. When the source has a registered physical device (such as a WLED controller), both diagnostics are linked to **that existing device's Diagnostics section**. Depending on Home Assistant's display filters, you may need to show diagnostic or hidden entities. The exact `sensor.*` entity IDs depend on the entity registry, not just the display name.
+Find both diagnostic entities under **Settings → Devices & services → Entities**, searching for **Entity Proxy** plus your instance name, or the existing entity IDs ending in `_errors` / `_configuration`. When the source has a registered physical device (such as a WLED controller), both diagnostics are linked to **that existing device's Diagnostics section**. Depending on Home Assistant's display filters, you may need to show diagnostic or hidden entities. The exact `sensor.*` entity IDs depend on the entity registry, not just the display name.
 
 **Configuration sensor:** `sensor.<name>_configuration` reports `configured` and safe, read-only attributes including `source_entity`, `state_overrides`, `action_overrides`, `off_preset_entity`, `off_preset_name`, `virtual_state` and `active_errors`. This shows what the entry is **actually using** after its reload. It deliberately does not expose raw service data or secrets.
 
