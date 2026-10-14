@@ -17,6 +17,7 @@ class ColorMode(str, enum.Enum):
     BRIGHTNESS = "brightness"
     COLOR_TEMP = "color_temp"
     HS = "hs"
+    XY = "xy"
     RGB = "rgb"
     RGBW = "rgbw"
     RGBWW = "rgbww"
@@ -25,6 +26,11 @@ class ColorMode(str, enum.Enum):
 light_module = types.ModuleType("homeassistant.components.light")
 light_module.LightEntity = type("LightEntity", (), {})
 light_module.ColorMode = ColorMode
+class LightEntityFeature(enum.IntFlag):
+    EFFECT = 4
+    FLASH = 8
+    TRANSITION = 32
+light_module.LightEntityFeature = LightEntityFeature
 sys.modules["homeassistant.components.light"] = light_module
 
 spec = importlib.util.spec_from_file_location(
@@ -52,6 +58,17 @@ class LightTests(unittest.IsolatedAsyncioTestCase):
             subscribe=lambda fn: (lambda: None),
         )
         return ProxyLight(runtime)
+
+    async def test_feature_membership_matches_home_assistant(self):
+        for raw in (0, 4, 44, "44", None, "broken", -1, float("inf")):
+            with self.subTest(raw=raw):
+                light = self.make_light(attributes={"supported_features": raw})
+                self.assertIsInstance(light.supported_features, LightEntityFeature)
+                self.assertEqual(LightEntityFeature.EFFECT in light.supported_features, raw in (4, 44, "44"))
+
+    async def test_white_requires_color_and_cannot_mix_with_temperature(self):
+        for modes, expected in [(["white"], {ColorMode.ONOFF}), (["white", "color_temp"], {ColorMode.COLOR_TEMP}), (["white", "rgb"], {ColorMode.WHITE, ColorMode.RGB})]:
+            self.assertEqual(self.make_light(attributes={"supported_color_modes": modes}).supported_color_modes, expected)
 
     async def test_source_rgbww_usable(self):
         light = self.make_light(attributes={

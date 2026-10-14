@@ -4,3 +4,4 @@ __pycache__/
 .coverage
 .venv/
 .DS_Store
+pytest-of-root/

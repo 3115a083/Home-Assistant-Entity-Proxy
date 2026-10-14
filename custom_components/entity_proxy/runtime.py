@@ -190,6 +190,8 @@ class ProxyRuntime:
         if state is None or state.state in ("unavailable", "unknown"):
             raise HomeAssistantError(f"Action target {target} is unavailable")
         domain, service = step["service"].split(".")
+        if domain == "fan" and service == "set_oscillating":
+            service = "oscillate"  # Preserve the legacy rule action name.
         if not self.hass.services.has_service(domain, service):
             raise HomeAssistantError(f"Service {step['service']} is unavailable")
         payload = dict(arguments) if step["forward_arguments"] else {}
@@ -221,17 +223,23 @@ class ProxyRuntime:
         """Call a mapped service or forward to primary, with fallback and errors."""
         arguments = dict(arguments or {})
         async with self._lock:
+            if action == "turn_on" and self.virtual_state == "off" and self.source.startswith("light."):
+                restore = self._restore_light()
+                # HA accepts only one color argument. Explicit colors win,
+                # while a brightness-only request still restores the dark preset.
+                if any(key in arguments for key in (*RESTORE_COLOR_KEYS, "color_name", "white")):
+                    for key in RESTORE_COLOR_KEYS:
+                        restore.pop(key, None)
+                restore.update(arguments)
+                arguments = restore
             self.validate_references()
             rule = self.action_rules.get(action)
             if rule is None:
-                if action == "turn_on" and self.virtual_state == "off" and not arguments and self.source.startswith("light."):
-                    arguments = self._restore_light()
-                primary_step = {"service": f"{self.source.split('.')[0]}.{action}", "target": self.source, "data": {}, "forward_arguments": True}
+                service_action = "oscillate" if action == "set_oscillating" and self.source.startswith("fan.") else action
+                primary_step = {"service": f"{self.source.split('.')[0]}.{service_action}", "target": self.source, "data": {}, "forward_arguments": True}
                 steps, backup, reported = [primary_step], [], None
             else:
                 steps, backup, reported = rule["steps"], rule["fallback"], rule["reported_state"]
-                if action == "turn_on" and not arguments and self.virtual_state == "off" and self.source.startswith("light."):
-                    arguments = self._restore_light()
 
             self._dark_command_in_progress = action == "turn_off" and bool(rule)
             try:

@@ -1,6 +1,6 @@
 """Cover proxy."""
 
-from homeassistant.components.cover import CoverEntity
+from homeassistant.components.cover import CoverEntity, CoverEntityFeature
 from .base import ProxyEntity
 from .const import DOMAIN
 
@@ -32,7 +32,7 @@ class ProxyCover(ProxyEntity, CoverEntity):
 
     @property
     def supported_features(self):
-        return int(self.val("supported_features", 0))
+        return self.features(CoverEntityFeature)
 
     async def async_open_cover(self, **kwargs):
         await self.runtime.async_action("open_cover", kwargs)

@@ -15,7 +15,7 @@ TRANSLATIONS = [
     COMPONENT / "translations" / "en.json",
     COMPONENT / "translations" / "de.json",
 ]
-MENU_KEYS = {"source", "preset", "rules"}
+MENU_KEYS = {"source", "preset", "guided", "rules"}
 SENSOR_KEYS = {"errors", "configuration"}
 
 

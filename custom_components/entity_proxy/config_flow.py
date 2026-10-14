@@ -11,6 +11,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er, selector
 
 from .const import DOMAIN, SUPPORTED_DOMAINS
+from .guided_flow import GuidedRulesMixin
 from .rules import InvalidRules, RuleFieldError, parse_configuration, remap_source_references, validate_all
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ def _preset_selection(action_rules: dict) -> tuple[str | None, str | None]:
     return target, option
 
 
-class EntityProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class EntityProxyConfigFlow(GuidedRulesMixin, config_entries.ConfigFlow, domain=DOMAIN):
     """Create a proxy from a source entity and editable JSON rules."""
 
     VERSION = 1
@@ -81,10 +82,12 @@ class EntityProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "proxy_source"
             elif source.split(".")[0] not in SUPPORTED_DOMAINS:
                 errors["base"] = "unsupported"
+            elif not user_input["name"].strip():
+                errors["name"] = "empty_name"
             else:
                 self._source = source
                 self._name = user_input["name"].strip()
-                return await self.async_step_rules()
+                return await self.async_step_setup()
         return self.async_show_form(
             step_id="user", errors=errors,
             data_schema=vol.Schema({
@@ -94,6 +97,29 @@ class EntityProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
             }),
         )
+
+    def _begin_guided(self):
+        if not hasattr(self, "_guided_options"):
+            self._guided_options = {"state_rules": [], "action_rules": {}}
+
+    def _guided_source(self):
+        return self._source
+
+    def _guided_refs(self, source, rules):
+        return _no_proxy_refs(self.hass, source, rules)
+
+    def _save_guided(self):
+        return self.async_create_entry(title=self._name, data={"source": self._source, "name": self._name}, options=self._guided_options)
+
+    async def async_step_setup(self, user_input=None):
+        return self.async_show_menu(step_id="setup", menu_options=["transparent", "guided", "rules"])
+
+    async def async_step_transparent(self, user_input=None):
+        self._begin_guided()
+        return await self.async_step_finish(user_input)
+
+    async def async_step_preset(self, user_input=None):
+        return await _preset_step(self, user_input)
 
     async def async_step_rules(self, user_input=None):
         errors = {}
@@ -132,11 +158,25 @@ class EntityProxyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return ProxyOptionsFlow()
 
 
-class ProxyOptionsFlow(config_entries.OptionsFlow):
+class ProxyOptionsFlow(GuidedRulesMixin, config_entries.OptionsFlow):
     """Edit source, off preset and advanced rules without losing the proxy ID."""
 
+    def _begin_guided(self):
+        if not hasattr(self, "_guided_options"):
+            from copy import deepcopy
+            self._guided_options = deepcopy(dict(self.config_entry.options))
+
+    def _guided_source(self):
+        return _effective_source(self.config_entry)
+
+    def _guided_refs(self, source, rules):
+        return _no_proxy_refs(self.hass, source, rules)
+
+    def _save_guided(self):
+        return self.async_create_entry(title="", data=self._guided_options)
+
     async def async_step_init(self, user_input=None):
-        menu = ["source", "rules"]
+        menu = ["source", "guided", "rules"]
         if _effective_source(self.config_entry).startswith("light."):
             menu.insert(1, "preset")
         return self.async_show_menu(step_id="init", menu_options=menu)
@@ -173,47 +213,7 @@ class ProxyOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_preset(self, user_input=None):
-        entry = self.config_entry
-        source = _effective_source(entry)
-        if not source.startswith("light."):
-            return self.async_abort(reason="not_light")
-        actions = entry.options.get("action_rules", {})
-        preset_entity, preset_name = _preset_selection(actions)
-        errors = {}
-        if user_input is not None:
-            target = user_input["preset_entity"]
-            option = user_input["preset_name"].strip()
-            if not option:
-                errors["preset_name"] = "empty_preset"
-            else:
-                updated_actions = dict(actions)
-                updated_actions["turn_off"] = {
-                    "steps": [{
-                        "service": "select.select_option",
-                        "target": target,
-                        "data": {"option": option},
-                    }],
-                    "reported_state": "off",
-                }
-                try:
-                    states, actions_clean = validate_all(source, entry.options.get("state_rules", []), updated_actions)
-                    updated = {**entry.options, "state_rules": states, "action_rules": actions_clean}
-                    if not _no_proxy_refs(self.hass, source, updated):
-                        raise InvalidRules("Proxy entities are not valid dependencies")
-                except InvalidRules:
-                    errors["base"] = "invalid_rules"
-                else:
-                    return self.async_create_entry(title="", data=updated)
-        preset_schema = {
-            vol.Required("preset_entity", default=(user_input or {}).get("preset_entity", preset_entity))
-            if (user_input or {}).get("preset_entity", preset_entity) else vol.Required("preset_entity"):
-                selector.EntitySelector(selector.EntitySelectorConfig(domain=["select"])),
-            vol.Required("preset_name", default=(user_input or {}).get("preset_name", preset_name or "Light OFF")):
-                selector.TextSelector(),
-        }
-        return self.async_show_form(
-            step_id="preset", errors=errors, data_schema=vol.Schema(preset_schema),
-        )
+        return await _preset_step(self, user_input)
 
     async def async_step_rules(self, user_input=None):
         entry = self.config_entry
@@ -243,3 +243,52 @@ class ProxyOptionsFlow(config_entries.OptionsFlow):
                 (user_input or {}).get("action_rules", json.dumps(entry.options.get("action_rules", {}), indent=2)),
             ),
         )
+
+
+async def _preset_step(self, user_input=None):
+    staged = getattr(self, "_guided_active", False) or isinstance(self, EntityProxyConfigFlow)
+    self._begin_guided()
+    source = self._guided_source()
+    options = self._guided_options
+    if not source.startswith("light."):
+        return self.async_abort(reason="not_light")
+    actions = options.get("action_rules", {})
+    preset_entity, preset_name = _preset_selection(actions)
+    errors = {}
+    if user_input is not None:
+        target = user_input["preset_entity"]
+        option = user_input["preset_name"].strip()
+        if not option:
+            errors["preset_name"] = "empty_preset"
+        else:
+            updated_actions = dict(actions)
+            updated_actions["turn_off"] = {
+                "steps": [{
+                    "service": "select.select_option",
+                    "target": target,
+                    "data": {"option": option},
+                }],
+                "reported_state": "off",
+            }
+            try:
+                states, actions_clean = validate_all(source, options.get("state_rules", []), updated_actions)
+                updated = {**options, "state_rules": states, "action_rules": actions_clean}
+                if not _no_proxy_refs(self.hass, source, updated):
+                    raise InvalidRules("Proxy entities are not valid dependencies")
+            except InvalidRules:
+                errors["base"] = "invalid_rules"
+            else:
+                self._guided_options = updated
+                if staged:
+                    return await self.async_step_guided()
+                return self._save_guided()
+    preset_schema = {
+        vol.Required("preset_entity", default=(user_input or {}).get("preset_entity", preset_entity))
+        if (user_input or {}).get("preset_entity", preset_entity) else vol.Required("preset_entity"):
+            selector.EntitySelector(selector.EntitySelectorConfig(domain=["select"])),
+        vol.Required("preset_name", default=(user_input or {}).get("preset_name", preset_name or "Light OFF")):
+            selector.TextSelector(),
+    }
+    return self.async_show_form(
+        step_id="preset", errors=errors, data_schema=vol.Schema(preset_schema),
+    )

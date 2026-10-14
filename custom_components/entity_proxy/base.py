@@ -54,6 +54,14 @@ class ProxyEntity(Entity):
     def val(self, name: str, default: Any = None) -> Any:
         return self.runtime.value(name, default)
 
+    def features(self, feature_type):
+        """Convert serialized state flags back to the platform's IntFlag."""
+        try:
+            raw = int(self.val("supported_features", 0))
+            return feature_type(raw if raw >= 0 else 0)
+        except (TypeError, ValueError, OverflowError):
+            return feature_type(0)
+
     @property
     def icon(self) -> str | None:
         return getattr(self, "_attr_icon", None) or self.val("icon")

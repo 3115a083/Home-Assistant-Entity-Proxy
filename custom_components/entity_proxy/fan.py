@@ -1,6 +1,6 @@
 """Fan proxy."""
 
-from homeassistant.components.fan import FanEntity
+from homeassistant.components.fan import FanEntity, FanEntityFeature
 from .base import ProxyEntity
 from .const import DOMAIN
 
@@ -16,7 +16,7 @@ class ProxyFan(ProxyEntity, FanEntity):
 
     @property
     def supported_features(self):
-        return int(self.val("supported_features", 0))
+        return self.features(FanEntityFeature)
 
     @property
     def percentage(self):

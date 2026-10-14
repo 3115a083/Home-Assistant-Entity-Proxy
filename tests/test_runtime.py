@@ -1,6 +1,7 @@
 """Isolated dispatcher tests using lightweight HA service/store stubs."""
 
 import importlib.util
+import asyncio
 from pathlib import Path
 import sys
 import types
@@ -115,6 +116,64 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
             options={"state_rules": [], "action_rules": action_rules or {}},
         )
         return Runtime(hass, entry), services
+
+    async def test_restore_with_brightness_and_explicit_color(self):
+        runtime, services = self.make_runtime()
+        runtime._remember_light(runtime.source_state())
+        runtime.virtual_state = "off"
+        await runtime.async_action("turn_on", {"brightness": 70})
+        self.assertEqual(services.calls[-1][1]["brightness"], 70)
+        self.assertEqual(services.calls[-1][1]["rgbww_color"], [60, 20, 10, 5, 8])
+        runtime.virtual_state = "off"
+        await runtime.async_action("turn_on", {"rgb_color": [1, 2, 3]})
+        self.assertNotIn("rgbww_color", services.calls[-1][1])
+        self.assertEqual(services.calls[-1][1]["rgb_color"], [1, 2, 3])
+
+    async def test_fan_oscillation_uses_actual_service(self):
+        runtime, services = self.make_runtime()
+        runtime.source = "fan.source"
+        runtime.hass.states.states["fan.source"] = State("on")
+        await runtime.async_action("set_oscillating", {"oscillating": True})
+        self.assertEqual(services.calls[-1][0], "fan.oscillate")
+        await runtime._call({"service": "fan.set_oscillating", "target": "fan.source", "data": {}, "forward_arguments": True}, {"oscillating": False})
+        self.assertEqual(services.calls[-1][0], "fan.oscillate")
+
+    async def test_unavailable_target_fails_without_service_call(self):
+        runtime, services = self.make_runtime()
+        runtime.hass.states.states["light.wled"] = State("unavailable")
+        with self.assertRaises(ha_exceptions.HomeAssistantError):
+            await runtime.async_action("turn_off")
+        self.assertFalse(services.calls)
+        self.assertIn("action:turn_off", runtime.errors)
+
+    async def test_concurrent_actions_are_serialized(self):
+        runtime, services = self.make_runtime()
+        active = 0
+        maximum = 0
+        async def call(domain, service, data, blocking):
+            nonlocal active, maximum
+            active += 1
+            maximum = max(maximum, active)
+            await asyncio.sleep(0)
+            services.calls.append((service, data))
+            active -= 1
+        services.async_call = call
+        await asyncio.gather(*(runtime.async_action("turn_off") for _ in range(4)))
+        self.assertEqual(maximum, 1)
+        self.assertEqual(len(services.calls), 4)
+
+    async def test_restart_preserves_virtual_off_and_snapshot(self):
+        runtime, _ = self.make_runtime()
+        runtime._remember_light(runtime.source_state())
+        runtime.virtual_state = "off"
+        runtime._save()
+        restored, _ = self.make_runtime()
+        restored._store.data = runtime._store.data
+        await restored.async_start()
+        self.assertEqual(restored.virtual_state, "off")
+        self.assertEqual(restored.last_on["brightness"], 150)
+        restored.stop()
+        self.assertIsNone(restored._unsub)
 
     async def test_source_override_is_used_for_event_subscription_and_actions(self):
         runtime, services = self.make_runtime()
