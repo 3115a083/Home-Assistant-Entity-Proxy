@@ -1,0 +1,9 @@
+# Review changes affecting automation, code execution and release integrity.
+* @3115a083
+/.github/ @3115a083
+/custom_components/ @3115a083
+/scripts/ @3115a083
+/tests/ @3115a083
+/hacs.json @3115a083
+/SECURITY.md @3115a083
+/AGENTS.md @3115a083
