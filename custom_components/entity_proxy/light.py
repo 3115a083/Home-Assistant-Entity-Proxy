@@ -17,25 +17,51 @@ class ProxyLight(ProxyEntity, LightEntity):
 
     @property
     def supported_color_modes(self):
-        raw = self.val("supported_color_modes", ["onoff"])
+        """Mirror valid source modes without crashing on incomplete updates."""
+        raw = self.val("supported_color_modes")
         result = set()
         for mode in raw if isinstance(raw, (list, tuple, set)) else []:
             try:
-                result.add(ColorMode(mode))
-            except ValueError:
+                parsed = ColorMode(mode)
+            except (TypeError, ValueError):
                 continue
+            if parsed != ColorMode.UNKNOWN:
+                result.add(parsed)
+        # HA rejects mixing simple on/off or brightness with color modes.
+        if len(result) > 1:
+            result.discard(ColorMode.ONOFF)
+            result.discard(ColorMode.BRIGHTNESS)
+        # WHITE cannot be the only supported mode.
+        if result == {ColorMode.WHITE}:
+            result.clear()
         return result or {ColorMode.ONOFF}
 
     @property
     def color_mode(self):
+        """A null or stale source color mode must not prevent registration."""
+        if not self.is_on:
+            return None
+        raw = self.val("color_mode")
         try:
-            return ColorMode(self.val("color_mode", "onoff"))
-        except ValueError:
-            return ColorMode.ONOFF
+            current = ColorMode(raw)
+        except (TypeError, ValueError):
+            current = None
+        supported = self.supported_color_modes
+        if current in supported:
+            return current
+        # Active effects can report a more restrictive mode.
+        if current in (ColorMode.ONOFF, ColorMode.BRIGHTNESS):
+            return current
+        # Deterministic safe fallback if the source temporarily has no mode.
+        return sorted(supported, key=lambda item: item.value)[0]
 
     @property
     def supported_features(self):
-        return int(self.val("supported_features", 0))
+        raw = self.val("supported_features", 0)
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return 0
 
     @property
     def brightness(self):
