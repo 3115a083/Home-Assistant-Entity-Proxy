@@ -1,0 +1,70 @@
+name: Publish GitHub release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - custom_components/entity_proxy/manifest.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: entity-proxy-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == '3115a083/Home-Assistant-Entity-Proxy' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out exact commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Compile integration
+        run: python -m compileall -q custom_components/entity_proxy
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Validate integration JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in Path('custom_components/entity_proxy').rglob('*.json'):
+              json.loads(path.read_text(encoding='utf-8'))
+          json.loads(Path('hacs.json').read_text(encoding='utf-8'))
+          PY
+      - name: Verify release version and generate notes
+        id: release
+        run: python scripts/release_metadata.py
+      - name: Publish release only for this verified commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists. No changes made."
+            exit 0
+          fi
+          existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null || true)"
+          if [[ -n "$existing" && "$existing" != "$GITHUB_SHA" ]]; then
+            echo "::error::Tag $TAG already points to a different commit."
+            exit 1
+          fi
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Entity Proxy $TAG" \
+            --notes-file .release-notes.md \
+            --latest
