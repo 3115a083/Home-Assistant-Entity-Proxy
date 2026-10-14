@@ -4,6 +4,20 @@ All notable changes to Entity Proxy are documented here.
 
 The project uses [Semantic Versioning](https://semver.org/). GitHub Releases use a `v` prefix (for example `v0.1.3`); the Home Assistant integration manifest uses the same version without the prefix.
 
+## [0.1.6] - 2026-10-14
+
+### Fixed
+- Restore readable labels for the three Entity Proxy options-menu entries. The translations now use Home Assistant's required `options.step.init.menu_options` schema.
+- Rename the German options dialog to **Entity Proxy Einstellungen** to clearly identify the integration.
+- Show distinct, translated diagnostic entity names for each proxy instance instead of repeated `Configuration` and `Errors` labels.
+- Use translated entity-name placeholders with the configured proxy name, and disable the legacy device-prefix stripping on diagnostic entities.
+- Remove the unlocalized `issues` unit from the error count, keeping the numeric count and detailed issue attributes.
+
+### Compatibility
+- Existing proxy unique IDs, entity registry IDs, rule configurations and source-device associations remain unchanged.
+- Add regression tests for menu translations, German labels, diagnostic names and stable entity IDs.
+- Restart Home Assistant and refresh the frontend after upgrading; a user-customized entity name takes precedence over the generated name.
+
 ## [0.1.5] - 2026-10-14
 
 ### Added
