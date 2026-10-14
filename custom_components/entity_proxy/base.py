@@ -6,7 +6,6 @@ from typing import Any
 
 from homeassistant.helpers.device import async_entity_id_to_device
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.device import async_entity_id_to_device
 
 from .const import DOMAIN
 
@@ -26,9 +25,6 @@ class ProxyEntity(Entity):
         # All proxy platforms, including the diagnostics sensor, inherit this.
         # The source is taken from current config options, so changing the
         # source via the options flow relocates entities on entry reload.
-        self.device_entry = async_entity_id_to_device(runtime.hass, runtime.source)
-        # HA 2026.8: helper entities link directly to the source device.
-        # Never copy device_info or identifiers across config entries.
         self.device_entry = async_entity_id_to_device(runtime.hass, runtime.source)
 
     @property
