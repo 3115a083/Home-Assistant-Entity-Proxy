@@ -17,11 +17,12 @@ class ProxyEntity(Entity):
 
     def __init__(self, runtime: Any, role: str = "proxy") -> None:
         self.runtime = runtime
+        self._proxy_role = role
         self._attr_unique_id = f"{runtime.entry.entry_id}_{role}"
         # Diagnostic sensors use Home Assistant translated names with a
         # per-proxy placeholder. A hard-coded _attr_name would override them.
         if role not in ("errors", "configuration"):
-            self._attr_name = runtime.entry.data["name"]
+            self._attr_name = f"Entity Proxy: {runtime.entry.data['name']}"
         # Link the helper directly to the *source device*, not to a new
         # Entity Proxy device. HA 2026.8+ allows only one config entry per
         # device; copying source device_info would create a duplicate device.
@@ -41,6 +42,10 @@ class ProxyEntity(Entity):
 
     async def async_added_to_hass(self) -> None:
         self.async_on_remove(self.runtime.subscribe(self._changed))
+        if self._proxy_role == "proxy":
+            # HA assigns the actual ID at registration; names are not IDs.
+            self.runtime.proxy_entity_id = self.entity_id
+            self.runtime.notify()
 
     def _changed(self) -> None:
         self.async_write_ha_state()
