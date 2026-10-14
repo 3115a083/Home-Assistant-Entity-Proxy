@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from homeassistant.helpers.device import async_entity_id_to_device
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.device import async_entity_id_to_device
 
@@ -19,6 +20,13 @@ class ProxyEntity(Entity):
         self.runtime = runtime
         self._attr_unique_id = f"{runtime.entry.entry_id}_{role}"
         self._attr_name = runtime.entry.data["name"]
+        # Link the helper directly to the *source device*, not to a new
+        # Entity Proxy device. HA 2026.8+ allows only one config entry per
+        # device; copying source device_info would create a duplicate device.
+        # All proxy platforms, including the diagnostics sensor, inherit this.
+        # The source is taken from current config options, so changing the
+        # source via the options flow relocates entities on entry reload.
+        self.device_entry = async_entity_id_to_device(runtime.hass, runtime.source)
         # HA 2026.8: helper entities link directly to the source device.
         # Never copy device_info or identifiers across config entries.
         self.device_entry = async_entity_id_to_device(runtime.hass, runtime.source)
