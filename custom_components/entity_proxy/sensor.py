@@ -8,7 +8,7 @@ from .const import DOMAIN, MAX_ERRORS
 
 async def async_setup_entry(hass, entry, async_add_entities):
     runtime = hass.data[DOMAIN][entry.entry_id]
-    entities = [ProxyErrorSensor(runtime)]
+    entities = [ProxyErrorSensor(runtime), ProxyConfigurationSensor(runtime)]
     if entry.data["source"].startswith("sensor."):
         entities.insert(0, ProxySensor(runtime))
     async_add_entities(entities)
@@ -65,3 +65,50 @@ class ProxyErrorSensor(ProxyEntity, SensorEntity):
             "issues": list(self.runtime.errors.values())[:MAX_ERRORS],
             "issue_count": len(self.runtime.errors),
         }
+
+
+class ProxyConfigurationSensor(ProxyEntity, SensorEntity):
+    """Read-only, low-sensitivity summary of active proxy settings.
+
+    Never expose full action payloads: they could contain user-supplied values.
+    """
+
+    _attr_icon = "mdi:cog-check-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, runtime):
+        super().__init__(runtime, role="configuration")
+        self._attr_name = f"{runtime.entry.data['name']} Configuration"
+
+    @property
+    def available(self):
+        return True
+
+    @property
+    def native_value(self):
+        return "configured"
+
+    @property
+    def extra_state_attributes(self):
+        off = self.runtime.action_rules.get("turn_off", {})
+        steps = off.get("steps", [])
+        preset = next(
+            (step for step in steps if step.get("service") == "select.select_option"),
+            None,
+        )
+        result = {
+            "source_entity": self.runtime.source,
+            "state_override_count": len(self.runtime.state_rules),
+            "state_overrides": [
+                rule["attribute"] for rule in self.runtime.state_rules
+            ],
+            "action_override_count": len(self.runtime.action_rules),
+            "action_overrides": sorted(self.runtime.action_rules),
+            "virtual_state": self.runtime.virtual_state,
+            "active_errors": len(self.runtime.errors),
+        }
+        if preset is not None:
+            result["off_preset_entity"] = preset["target"]
+            # Only show the option name, never arbitrary other service payloads.
+            result["off_preset_name"] = preset["data"].get("option")
+        return result
