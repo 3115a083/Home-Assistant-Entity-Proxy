@@ -16,18 +16,18 @@ class WorkflowPolicyTests(unittest.TestCase):
 
     def test_reject_unpinned_action(self):
         self.assertTrue(security.check_workflow(
-            "permissions:\\n  contents: read\\nsteps:\\n  - uses: actions/checkout@v4\\n"
-            "    with:\\n      persist-credentials: false\\n", "unsafe"
+            "permissions:\n  contents: read\nsteps:\n  - uses: actions/checkout@v4\n"
+            "    with:\n      persist-credentials: false\n", "unsafe"
         ))
 
     def test_reject_privileged_fork_trigger(self):
         self.assertTrue(security.check_workflow(
-            "permissions:\\n  contents: read\\non:\\n  pull_request_target:\\n",
+            "permissions:\n  contents: read\non:\n  pull_request_target:\n",
             "unsafe"
         ))
 
     def test_reject_missing_permissions(self):
-        self.assertTrue(security.check_workflow("on: push\\n", "unsafe"))
+        self.assertTrue(security.check_workflow("on: push\n", "unsafe"))
 
 
 if __name__ == "__main__":
