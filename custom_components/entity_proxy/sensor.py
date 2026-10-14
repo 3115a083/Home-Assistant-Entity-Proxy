@@ -95,7 +95,8 @@ class ProxyConfigurationSensor(ProxyEntity, SensorEntity):
 
     @property
     def native_value(self):
-        return "configured"
+        # A saved configuration does not guarantee a usable control entity.
+        return "registered" if self.runtime.proxy_entity_id else "control_missing"
 
     @property
     def extra_state_attributes(self):
@@ -108,6 +109,8 @@ class ProxyConfigurationSensor(ProxyEntity, SensorEntity):
         result = {
             "proxy_name": self.runtime.entry.data["name"],
             "source_entity": self.runtime.source,
+            "proxy_entity_id": self.runtime.proxy_entity_id,
+            "proxy_domain": self.runtime.source.split(".", 1)[0],
             "state_override_count": len(self.runtime.state_rules),
             "state_overrides": [
                 rule["attribute"] for rule in self.runtime.state_rules
