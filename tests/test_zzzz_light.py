@@ -47,6 +47,7 @@ class LightTests(unittest.IsolatedAsyncioTestCase):
             source="light.source",
             proxy_entity_id=None,
             notify=lambda: None,
+            _set_error=lambda *args: None,
             value=lambda name, default=None: state_map.get(name, default),
             subscribe=lambda fn: (lambda: None),
         )
