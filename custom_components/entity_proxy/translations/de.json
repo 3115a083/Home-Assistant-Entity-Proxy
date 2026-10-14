@@ -30,8 +30,18 @@
   "options": {
     "step": {
       "init": {
-        "title": "Proxy-Einstellungen",
-        "description": "Wähle, was du nachträglich ändern möchtest."
+        "title": "Entity Proxy Einstellungen",
+        "description": "Wähle die Einstellungen der Entity-Proxy-Entität, die du bearbeiten möchtest.",
+        "menu_options": {
+          "source": "Quellentität ändern",
+          "preset": "Ausschalt-Preset ändern",
+          "rules": "Zustands- und Aktionsregeln bearbeiten"
+        },
+        "menu_option_descriptions": {
+          "source": "Die ursprüngliche oder umbenannte Entität auswählen.",
+          "preset": "Preset-Entität und Preset-Namen für Ausschalten festlegen.",
+          "rules": "Zustandswerte, Alternativsensoren, Aktionen und Backups bearbeiten."
+        }
       },
       "source": {
         "title": "Quellentität ändern",
@@ -67,6 +77,16 @@
     },
     "abort": {
       "not_light": "Preset-Bearbeitung ist nur für Lichtentitäten verfügbar."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "errors": {
+        "name": "Entity Proxy · {proxy_name} · Fehlerstatus"
+      },
+      "configuration": {
+        "name": "Entity Proxy · {proxy_name} · Aktive Einstellungen"
+      }
     }
   }
 }
