@@ -2,7 +2,7 @@
 
 A configurable, event-driven Home Assistant custom integration that wraps an existing entity, selectively overrides its reported state/attributes, and replaces individual service actions with safe, targeted Home Assistant services. Includes fallbacks and a per-proxy error sensor.
 
-> **Status: v0.1.3, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
+> **Status: v0.1.4, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
 
 ## Supported entities
 
@@ -41,7 +41,7 @@ Entity Proxy uses semantic versions. Each HACS-installable version has:
 
 Releases are generated automatically from a version change on `main`, **only after checks pass**. Do not manually edit tags or overwrite published releases. The default branch is hidden in HACS to favor stable tagged versions.
 
-**Migrating an older HACS installation that shows a short Git commit hash:** Open HACS → Entity Proxy → three-dot menu → **Redownload**, explicitly select the latest release (`v0.1.3` or newer), and restart Home Assistant. HACS does not always prompt for the first tagged release when transitioning from an earlier commit-based install. Existing Home Assistant integration entries and their settings are retained by a normal HACS reinstall; keep a backup before changing versions.
+**Migrating an older HACS installation that shows a short Git commit hash:** Open HACS → Entity Proxy → three-dot menu → **Redownload**, explicitly select the latest release (`v0.1.4` or newer), and restart Home Assistant. HACS does not always prompt for the first tagged release when transitioning from an earlier commit-based install. Existing Home Assistant integration entries and their settings are retained by a normal HACS reinstall; keep a backup before changing versions.
 
 Find release notes at [GitHub Releases](https://github.com/3115a083/Home-Assistant-Entity-Proxy/releases).
 
@@ -60,6 +60,18 @@ Go to **Settings → Devices & services → Entity Proxy → Configure**. Choose
 - **Edit advanced rules:** Edit or add state and action overrides using JSON. The current values are prefilled and input is retained when validation fails.
 
 The source entity and the preset select entity must remain enabled in Home Assistant. Hide the original *from dashboards* if desired, but do not disable it. Changing the source domain (e.g. `light` to `switch`) requires creating a new proxy.
+
+## Device association
+
+Proxy entities now appear on **the same Home Assistant device page as their source entity**, including the associated diagnostics error sensor. The normal proxy light/switch/climate controls stay under their standard device controls section; the error sensor is categorized as Diagnostics.
+
+The source integration remains the only owner of the physical device. Entity Proxy attaches through Home Assistant's official helper device link (`device_entry`), not by copying the source's device identifiers. This avoids duplicate devices and is compatible with the device registry changes introduced in Home Assistant 2026.8.
+
+- The source entity must already belong to a device in the Home Assistant entity registry. Sources without devices remain standalone proxy entities.
+- Changing the source in **Settings → Devices & services → Entity Proxy → Configure → Source** reloads the proxy and updates its device association without changing the proxy's entity unique ID or its existing rules.
+- If the source integration changes a device assignment without reconfiguring Entity Proxy, reload the Entity Proxy integration so the device link is refreshed.
+- Do not disable the source entity. You can hide it from your dashboards.
+- Do not set `device_info` or manually alter the source device registry's config entries: these patterns are unsupported for helper integrations.
 
 ## How rules work
 
