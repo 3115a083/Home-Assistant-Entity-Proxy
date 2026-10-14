@@ -2,7 +2,7 @@
 
 A configurable, event-driven Home Assistant custom integration that wraps an existing entity, selectively overrides its reported state/attributes, and replaces individual service actions with safe, targeted Home Assistant services. Includes fallbacks and a per-proxy error sensor.
 
-> **Status: v0.1.1, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
+> **Status: v0.1.3, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
 
 ## Supported entities
 
@@ -30,6 +30,20 @@ The goal is to preserve the **standard interface** of each supported entity, inc
 4. Choose the source entity and a name.
 5. Add rules using the multiline JSON editor, or leave the defaults `[]` and `{}` for a transparent proxy.
 6. Use **Configure** on the integration later to change the source entity, edit the light-off preset, or edit advanced JSON rules. All changes apply after an automatic entry reload.
+
+### Releases and HACS updates
+
+Entity Proxy uses semantic versions. Each HACS-installable version has:
+
+- An integration `manifest.json` version, such as `0.1.3`.
+- A matching published GitHub Release tagged `v0.1.3`.
+- English release notes derived from [CHANGELOG.md](CHANGELOG.md).
+
+Releases are generated automatically from a version change on `main`, **only after checks pass**. Do not manually edit tags or overwrite published releases. The default branch is hidden in HACS to favor stable tagged versions.
+
+**Migrating an older HACS installation that shows a short Git commit hash:** Open HACS → Entity Proxy → three-dot menu → **Redownload**, explicitly select the latest release (`v0.1.3` or newer), and restart Home Assistant. HACS does not always prompt for the first tagged release when transitioning from an earlier commit-based install. Existing Home Assistant integration entries and their settings are retained by a normal HACS reinstall; keep a backup before changing versions.
+
+Find release notes at [GitHub Releases](https://github.com/3115a083/Home-Assistant-Entity-Proxy/releases).
 
 ### Manual
 
