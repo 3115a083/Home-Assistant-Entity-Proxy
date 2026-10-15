@@ -17,14 +17,85 @@
           "state_rules": "Zustandsregeln (JSON-Liste)",
           "action_rules": "Aktionsregeln und Backups (JSON-Objekt)"
         }
+      },
+      "setup": {
+        "title": "Einrichtung wählen",
+        "menu_options": {
+          "transparent": "Quelle ohne Änderungen spiegeln",
+          "guided": "Mit Formularen einrichten",
+          "rules": "Erweiterter JSON-Editor"
+        }
+      },
+      "guided": {
+        "title": "Proxy-Regeln einrichten",
+        "description": "Änderungen werden erst mit Prüfen und speichern übernommen. Eine Regel für ein vorhandenes Attribut oder eine Aktion ersetzt diese Regel.",
+        "menu_options": {
+          "state": "Zustandsregel hinzufügen oder ersetzen",
+          "action": "Aktionsregel hinzufügen oder ersetzen",
+          "preset": "Ausschalt-Preset einrichten",
+          "remove": "Regel entfernen",
+          "finish": "Prüfen und speichern"
+        }
+      },
+      "state": {
+        "title": "Zustandsregel hinzufügen oder ersetzen",
+        "description": "Eigenschaft eingeben, z. B. state, current_temperature, brightness oder current_humidity. entity liest einen Sensor oder ein Attribut, optional mit Ersatzsensor. constant nutzt den festen Wert. Boolesche Werte als true oder false eingeben.",
+        "data": {
+          "attribute": "Proxy-Eigenschaft",
+          "mode": "Wertquelle: entity oder constant",
+          "value_source": "Entität für den Wert",
+          "source_attribute": "Quellattribut (state für Sensorwert)",
+          "fallback": "Ersatzentität (optional)",
+          "fallback_attribute": "Ersatzattribut",
+          "value_type": "Typ des festen Werts",
+          "value": "Fester Wert",
+          "fallback_value": "Letzter Ersatzwert (optional)"
+        }
+      },
+      "action": {
+        "title": "Aktionsregel hinzufügen oder ersetzen",
+        "description": "Proxy-Aktion und Ersatzdienst mit einer Zielentität wählen. Optional einen Parameter angeben, z. B. option mit dem Presetnamen oder temperature mit einer Zahl. Ersetzt die gesamte Aktionsregel einschließlich Ersatzaktionen. Komplexe Abläufe bleiben im erweiterten Editor.",
+        "data": {
+          "action": "Proxy-Aktion",
+          "service": "Ersatzdienst",
+          "target": "Zielentität",
+          "forward_arguments": "Aufrufparameter weitergeben",
+          "parameter": "Dienstparameter (optional)",
+          "parameter_value": "Parameterwert",
+          "value_type": "Parametertyp",
+          "reported_state": "Angezeigter Zustand nach Erfolg (source = Quelle spiegeln)"
+        }
+      },
+      "remove": {
+        "title": "Regel entfernen",
+        "data": {
+          "rule": "Zu entfernende Regel"
+        }
+      },
+      "finish": {
+        "title": "Prüfen und speichern",
+        "description": "Konfigurierte Proxy-Regeln speichern. Unveränderte Eigenschaften und Aktionen spiegeln die Quelle.\n\nQuelle: {source}\n\nZustandsregeln: {states}\n\nAktionsregeln: {actions}"
+      },
+      "preset": {
+        "title": "Ausschalt-Preset bearbeiten",
+        "description": "Wähle den WLED-Preset-Selektor und den Preset-Namen. Dies ersetzt ausschließlich die `turn_off`-Aktionsregel, einschließlich eines dort vorhandenen Backups. Alle anderen Regeln bleiben unverändert. Der Preset muss das Licht schwarz schalten und WLED eingeschaltet lassen.",
+        "data": {
+          "preset_entity": "Preset-Auswahl-Entität",
+          "preset_name": "Preset-Name (exakt)"
+        }
       }
     },
     "error": {
-      "invalid_rules": "Ungültige oder unsichere Regeln. Details siehe oben.",
+      "invalid_rules": "Ungültige Regel. Attribute, Werttypen, Zieldomäne und Proxy-Verweise prüfen.",
       "proxy_source": "Ein Proxy darf keinen anderen Entity Proxy als Quelle verwenden.",
       "unsupported": "Dieser Entitätstyp wird nicht unterstützt.",
       "invalid_state_rules": "Ungültige Zustandsregeln. Erforderlich ist eine JSON-Liste ([]). Details siehe oben.",
-      "invalid_action_rules": "Ungültige Aktionsregeln. Erforderlich ist ein JSON-Objekt ({}). Details siehe oben."
+      "invalid_action_rules": "Ungültige Aktionsregeln. Erforderlich ist ein JSON-Objekt ({}). Details siehe oben.",
+      "empty_preset": "Presetname darf nicht leer sein.",
+      "empty_name": "Name darf nicht leer sein."
+    },
+    "abort": {
+      "read_only": "Diese Quelle hat keine steuerbaren Aktionen."
     }
   },
   "options": {
@@ -35,12 +106,14 @@
         "menu_options": {
           "source": "Quellentität ändern",
           "preset": "Ausschalt-Preset ändern",
-          "rules": "Zustands- und Aktionsregeln bearbeiten"
+          "rules": "Zustands- und Aktionsregeln bearbeiten",
+          "guided": "Mit Formularen einrichten"
         },
         "menu_option_descriptions": {
           "source": "Die ursprüngliche oder umbenannte Entität auswählen.",
           "preset": "Preset-Entität und Preset-Namen für Ausschalten festlegen.",
-          "rules": "Zustandswerte, Alternativsensoren, Aktionen und Backups bearbeiten."
+          "rules": "Zustandswerte, Alternativsensoren, Aktionen und Backups bearbeiten.",
+          "guided": "Zustands- und Aktionsregeln ohne JSON hinzufügen oder entfernen."
         }
       },
       "source": {
@@ -65,18 +138,78 @@
           "state_rules": "Zustandsregeln (JSON-Liste)",
           "action_rules": "Aktionsregeln und Backups (JSON-Objekt)"
         }
+      },
+      "setup": {
+        "title": "Einrichtung wählen",
+        "menu_options": {
+          "transparent": "Quelle ohne Änderungen spiegeln",
+          "guided": "Mit Formularen einrichten",
+          "rules": "Erweiterter JSON-Editor"
+        }
+      },
+      "guided": {
+        "title": "Proxy-Regeln einrichten",
+        "description": "Änderungen werden erst mit Prüfen und speichern übernommen. Eine Regel für ein vorhandenes Attribut oder eine Aktion ersetzt diese Regel.",
+        "menu_options": {
+          "state": "Zustandsregel hinzufügen oder ersetzen",
+          "action": "Aktionsregel hinzufügen oder ersetzen",
+          "preset": "Ausschalt-Preset einrichten",
+          "remove": "Regel entfernen",
+          "finish": "Prüfen und speichern"
+        }
+      },
+      "state": {
+        "title": "Zustandsregel hinzufügen oder ersetzen",
+        "description": "Eigenschaft eingeben, z. B. state, current_temperature, brightness oder current_humidity. entity liest einen Sensor oder ein Attribut, optional mit Ersatzsensor. constant nutzt den festen Wert. Boolesche Werte als true oder false eingeben.",
+        "data": {
+          "attribute": "Proxy-Eigenschaft",
+          "mode": "Wertquelle: entity oder constant",
+          "value_source": "Entität für den Wert",
+          "source_attribute": "Quellattribut (state für Sensorwert)",
+          "fallback": "Ersatzentität (optional)",
+          "fallback_attribute": "Ersatzattribut",
+          "value_type": "Typ des festen Werts",
+          "value": "Fester Wert",
+          "fallback_value": "Letzter Ersatzwert (optional)"
+        }
+      },
+      "action": {
+        "title": "Aktionsregel hinzufügen oder ersetzen",
+        "description": "Proxy-Aktion und Ersatzdienst mit einer Zielentität wählen. Optional einen Parameter angeben, z. B. option mit dem Presetnamen oder temperature mit einer Zahl. Ersetzt die gesamte Aktionsregel einschließlich Ersatzaktionen. Komplexe Abläufe bleiben im erweiterten Editor.",
+        "data": {
+          "action": "Proxy-Aktion",
+          "service": "Ersatzdienst",
+          "target": "Zielentität",
+          "forward_arguments": "Aufrufparameter weitergeben",
+          "parameter": "Dienstparameter (optional)",
+          "parameter_value": "Parameterwert",
+          "value_type": "Parametertyp",
+          "reported_state": "Angezeigter Zustand nach Erfolg (source = Quelle spiegeln)"
+        }
+      },
+      "remove": {
+        "title": "Regel entfernen",
+        "data": {
+          "rule": "Zu entfernende Regel"
+        }
+      },
+      "finish": {
+        "title": "Prüfen und speichern",
+        "description": "Konfigurierte Proxy-Regeln speichern. Unveränderte Eigenschaften und Aktionen spiegeln die Quelle.\n\nQuelle: {source}\n\nZustandsregeln: {states}\n\nAktionsregeln: {actions}"
       }
     },
     "error": {
-      "invalid_rules": "Ungültige oder unsichere Regeln. Details siehe oben.",
+      "invalid_rules": "Ungültige Regel. Attribute, Werttypen, Zieldomäne und Proxy-Verweise prüfen.",
       "invalid_state_rules": "Ungültige Zustandsregeln. Erforderlich ist eine JSON-Liste ([]). Details siehe oben.",
       "invalid_action_rules": "Ungültige Aktionsregeln. Erforderlich ist ein JSON-Objekt ({}). Details siehe oben.",
       "source_domain": "Die Quellentität muss denselben Entitätstyp behalten.",
       "proxy_source": "Ein anderer Entity Proxy darf keine Quelle sein.",
-      "empty_preset": "Preset-Name darf nicht leer sein."
+      "empty_preset": "Presetname darf nicht leer sein.",
+      "empty_name": "Name darf nicht leer sein."
     },
     "abort": {
-      "not_light": "Preset-Bearbeitung ist nur für Lichtentitäten verfügbar."
+      "not_light": "Preset-Bearbeitung ist nur für Lichtentitäten verfügbar.",
+      "read_only": "Diese Quelle hat keine steuerbaren Aktionen."
     }
   },
   "entity": {

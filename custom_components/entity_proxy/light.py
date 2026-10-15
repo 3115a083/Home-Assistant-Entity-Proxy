@@ -1,6 +1,6 @@
 """Light proxy preserving source color modes, brightness, and effects."""
 
-from homeassistant.components.light import ColorMode, LightEntity
+from homeassistant.components.light import ColorMode, LightEntity, LightEntityFeature
 
 from .base import ProxyEntity
 from .const import DOMAIN
@@ -32,8 +32,11 @@ class ProxyLight(ProxyEntity, LightEntity):
             result.discard(ColorMode.ONOFF)
             result.discard(ColorMode.BRIGHTNESS)
         # WHITE cannot be the only supported mode.
-        if result == {ColorMode.WHITE}:
-            result.clear()
+        if ColorMode.WHITE in result and (
+            ColorMode.COLOR_TEMP in result
+            or not result.intersection({ColorMode.HS, ColorMode.RGB, ColorMode.RGBW, ColorMode.RGBWW, ColorMode.XY})
+        ):
+            result.discard(ColorMode.WHITE)
         return result or {ColorMode.ONOFF}
 
     @property
@@ -57,11 +60,7 @@ class ProxyLight(ProxyEntity, LightEntity):
 
     @property
     def supported_features(self):
-        raw = self.val("supported_features", 0)
-        try:
-            return int(raw)
-        except (TypeError, ValueError):
-            return 0
+        return self.features(LightEntityFeature)
 
     @property
     def brightness(self):

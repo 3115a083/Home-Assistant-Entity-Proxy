@@ -17,14 +17,85 @@
           "state_rules": "State overrides (JSON array)",
           "action_rules": "Action overrides and backups (JSON object)"
         }
+      },
+      "setup": {
+        "title": "Choose setup method",
+        "menu_options": {
+          "transparent": "Mirror source without overrides",
+          "guided": "Configure with forms",
+          "rules": "Advanced JSON editor"
+        }
+      },
+      "guided": {
+        "title": "Configure proxy rules",
+        "description": "Changes are saved only after Review and save. Adding a rule for an existing attribute or action replaces that rule.",
+        "menu_options": {
+          "state": "Add or replace state override",
+          "action": "Add or replace action override",
+          "preset": "Configure off preset",
+          "remove": "Remove a rule",
+          "finish": "Review and save"
+        }
+      },
+      "state": {
+        "title": "Add or replace state override",
+        "description": "Choose a property such as state, current_temperature, brightness or current_humidity. Entity mode reads a sensor or attribute, with optional backup. Constant mode uses Value. Boolean values use true or false.",
+        "data": {
+          "attribute": "Proxy property",
+          "mode": "Value source: entity or constant",
+          "value_source": "Value source entity",
+          "source_attribute": "Source attribute (state for sensor value)",
+          "fallback": "Backup entity (optional)",
+          "fallback_attribute": "Backup attribute",
+          "value_type": "Constant type",
+          "value": "Constant value",
+          "fallback_value": "Last resort value (optional)"
+        }
+      },
+      "action": {
+        "title": "Add or replace action override",
+        "description": "Choose the proxy action and a replacement service with one target. Optionally add one parameter, e.g. option with your preset name, or temperature with a number. This replaces the entire action rule, including fallbacks. Complex sequences remain in the advanced editor.",
+        "data": {
+          "action": "Proxy action",
+          "service": "Replacement service",
+          "target": "Target entity",
+          "forward_arguments": "Forward incoming arguments",
+          "parameter": "Service parameter (optional)",
+          "parameter_value": "Parameter value",
+          "value_type": "Parameter type",
+          "reported_state": "Reported state after success (source = mirror source)"
+        }
+      },
+      "remove": {
+        "title": "Remove a rule",
+        "data": {
+          "rule": "Rule to remove"
+        }
+      },
+      "finish": {
+        "title": "Review and save",
+        "description": "Save the configured proxy rules. Unchanged properties and actions mirror the source.\n\nSource: {source}\n\nState rules: {states}\n\nAction rules: {actions}"
+      },
+      "preset": {
+        "title": "Edit off preset",
+        "description": "Choose the WLED preset selector and preset name. This replaces only the `turn_off` action rule, including any existing fallback. All other rules are preserved. The preset must set every channel to black while keeping WLED powered.",
+        "data": {
+          "preset_entity": "Preset select entity",
+          "preset_name": "Preset name (exact)"
+        }
       }
     },
     "error": {
-      "invalid_rules": "Invalid or unsafe JSON rules. Review the logs and README.",
+      "invalid_rules": "Invalid rule. Check attributes, value types, target domain and proxy references.",
       "proxy_source": "A proxy cannot wrap another Entity Proxy entity.",
       "unsupported": "Unsupported entity domain.",
       "invalid_state_rules": "Invalid state overrides. Use a JSON array ([]). See validation details above.",
-      "invalid_action_rules": "Invalid action overrides. Use a JSON object ({}). See validation details above."
+      "invalid_action_rules": "Invalid action overrides. Use a JSON object ({}). See validation details above.",
+      "empty_preset": "Preset name cannot be empty.",
+      "empty_name": "Name cannot be empty."
+    },
+    "abort": {
+      "read_only": "This source has no write actions."
     }
   },
   "options": {
@@ -35,12 +106,14 @@
         "menu_options": {
           "source": "Change source entity",
           "preset": "Change off preset",
-          "rules": "Edit state and action rules"
+          "rules": "Edit state and action rules",
+          "guided": "Configure with forms"
         },
         "menu_option_descriptions": {
           "source": "Select the original or renamed entity.",
           "preset": "Choose the preset entity and option used for off.",
-          "rules": "Edit state values, backup sensors, actions and fallbacks."
+          "rules": "Edit state values, backup sensors, actions and fallbacks.",
+          "guided": "Add or remove state and action rules without JSON."
         }
       },
       "source": {
@@ -65,18 +138,78 @@
           "state_rules": "State overrides (JSON array)",
           "action_rules": "Action overrides and backups (JSON object)"
         }
+      },
+      "setup": {
+        "title": "Choose setup method",
+        "menu_options": {
+          "transparent": "Mirror source without overrides",
+          "guided": "Configure with forms",
+          "rules": "Advanced JSON editor"
+        }
+      },
+      "guided": {
+        "title": "Configure proxy rules",
+        "description": "Changes are saved only after Review and save. Adding a rule for an existing attribute or action replaces that rule.",
+        "menu_options": {
+          "state": "Add or replace state override",
+          "action": "Add or replace action override",
+          "preset": "Configure off preset",
+          "remove": "Remove a rule",
+          "finish": "Review and save"
+        }
+      },
+      "state": {
+        "title": "Add or replace state override",
+        "description": "Choose a property such as state, current_temperature, brightness or current_humidity. Entity mode reads a sensor or attribute, with optional backup. Constant mode uses Value. Boolean values use true or false.",
+        "data": {
+          "attribute": "Proxy property",
+          "mode": "Value source: entity or constant",
+          "value_source": "Value source entity",
+          "source_attribute": "Source attribute (state for sensor value)",
+          "fallback": "Backup entity (optional)",
+          "fallback_attribute": "Backup attribute",
+          "value_type": "Constant type",
+          "value": "Constant value",
+          "fallback_value": "Last resort value (optional)"
+        }
+      },
+      "action": {
+        "title": "Add or replace action override",
+        "description": "Choose the proxy action and a replacement service with one target. Optionally add one parameter, e.g. option with your preset name, or temperature with a number. This replaces the entire action rule, including fallbacks. Complex sequences remain in the advanced editor.",
+        "data": {
+          "action": "Proxy action",
+          "service": "Replacement service",
+          "target": "Target entity",
+          "forward_arguments": "Forward incoming arguments",
+          "parameter": "Service parameter (optional)",
+          "parameter_value": "Parameter value",
+          "value_type": "Parameter type",
+          "reported_state": "Reported state after success (source = mirror source)"
+        }
+      },
+      "remove": {
+        "title": "Remove a rule",
+        "data": {
+          "rule": "Rule to remove"
+        }
+      },
+      "finish": {
+        "title": "Review and save",
+        "description": "Save the configured proxy rules. Unchanged properties and actions mirror the source.\n\nSource: {source}\n\nState rules: {states}\n\nAction rules: {actions}"
       }
     },
     "error": {
-      "invalid_rules": "Invalid or unsafe rules. Review the logs and README.",
+      "invalid_rules": "Invalid rule. Check attributes, value types, target domain and proxy references.",
       "invalid_state_rules": "Invalid state overrides. Use a JSON array ([]). See validation details above.",
       "invalid_action_rules": "Invalid action overrides. Use a JSON object ({}). See validation details above.",
       "source_domain": "New source must have the same entity domain.",
       "proxy_source": "Another Entity Proxy cannot be used as source.",
-      "empty_preset": "Preset name cannot be empty."
+      "empty_preset": "Preset name cannot be empty.",
+      "empty_name": "Name cannot be empty."
     },
     "abort": {
-      "not_light": "Preset editor is available for light entities only."
+      "not_light": "Preset editor is available for light entities only.",
+      "read_only": "This source has no write actions."
     }
   },
   "entity": {

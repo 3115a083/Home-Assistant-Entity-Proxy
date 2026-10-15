@@ -2,7 +2,7 @@
 
 A configurable, event-driven Home Assistant custom integration that wraps an existing entity, selectively overrides its reported state/attributes, and replaces individual service actions with safe, targeted Home Assistant services. Includes fallbacks and a per-proxy error sensor.
 
-> **Status: v0.1.7, experimental.** Static checks and unit tests are provided, but this release has **not yet been tested against a live Home Assistant instance**. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
+> **Status: v0.1.8, experimental.** Automated tests cover real Home Assistant Core 2026.10.1 in a disposable runtime with simulated sources and services. Physical devices and a production Home Assistant installation have **not** been tested. Do not use it for safety-critical heating, locks, alarms, or other essential control. No software can be guaranteed to be free of vulnerabilities.
 
 ## Supported entities
 
@@ -28,8 +28,9 @@ The goal is to preserve the **standard interface** of each supported entity, inc
 2. Install **Entity Proxy** and restart Home Assistant.
 3. Open **Settings → Devices & services → Add integration → Entity Proxy**.
 4. Choose the source entity and a name.
-5. Add rules using the multiline JSON editor, or leave the defaults `[]` and `{}` for a transparent proxy.
-6. Use **Configure** on the integration later to change the source entity, edit the light-off preset, or edit advanced JSON rules. All changes apply after an automatic entry reload.
+5. Choose **Mirror source without overrides** or **Configure with forms**. The guided menu adds state overrides, backup sensors, constant values, single-step action overrides and (for lights) an off preset. JSON is optional.
+6. Choose **Review and save** to store your rules. Existing attributes/actions are replaced only when you explicitly add a rule for the same key; unrelated rules are preserved. Use **Remove a rule** to restore pass-through for that key.
+7. Use **Configure** on the integration later to change the source entity, edit the light-off preset, or edit advanced JSON rules. All changes apply after an automatic entry reload.
 
 ### Releases and HACS updates
 
@@ -50,6 +51,20 @@ Find release notes at [GitHub Releases](https://github.com/3115a083/Home-Assista
 Copy `custom_components/entity_proxy` into `<config>/custom_components/entity_proxy`, restart Home Assistant and proceed with step 3 above.
 
 **Keep the source entity enabled.** You may hide it from dashboards, but disabling it will prevent the proxy from working.
+
+## Fix for `control_missing` and feature flags
+
+In 0.1.7, `ProxyLight.supported_features` returned a plain `int`. Core 2026.10.1 checks `LightEntityFeature.EFFECT in supported_features`, so the light could fail registration before receiving an entity ID. `control_missing` is the resulting diagnostic, not a separate configuration error. Version 0.1.8 returns `LightEntityFeature`, and equivalent typed flags for climate, cover and fan. Existing entry and entity unique IDs are preserved; do not delete the integration to apply this fix.
+
+## Configure without JSON
+
+During setup choose **Configure with forms**, or later **Configure → Configure with forms**:
+
+- **State override:** Enter a Home Assistant property, such as `current_temperature`, choose a value source entity, and optionally a backup entity and last-resort constant. `state` reads the sensor's value. Constant mode accepts a number, text, or boolean (`true`/`false`). Adding the same property replaces its existing rule.
+- **Action override:** Choose the proxy action, replacement service, one target entity and optional forwarding of incoming arguments. One typed service parameter is supported, for example `option` = `Light OFF`, or `temperature` = `21`. This replaces the whole selected action, including previous fallback steps. Complex multi-parameter/step and fallback sequences use the advanced JSON editor.
+- **Off preset (lights):** Choose a `select` entity and exact preset name. The generated rule reports virtual off and does not add a power-cutting fallback.
+- **Remove a rule:** Select a state/action rule to return that property/action to pass-through.
+- **Review and save:** The dialog lists the source and configured rule keys. Save commits all staged changes together. Cancelling leaves existing options unchanged.
 
 ## Clearly labeled Entity Proxy settings and diagnostics
 
@@ -265,11 +280,19 @@ python -m compileall -q custom_components/entity_proxy
 python -m unittest discover -s tests -v
 ```
 
-These checks validate syntax and standalone rule logic. **An integration smoke test on a real Home Assistant installation is still required**, especially for attribute schema differences between vendors. Please open a GitHub issue with logs and a minimal example configuration when reporting a problem.
+To run the real-HA suite separately (the standalone suite installs stub modules):
+
+```bash
+# Use Python 3.14 in a clean virtual environment.
+python -m pip install -r integration_tests/requirements.txt
+python -m pytest integration_tests -q
+```
+
+The real-HA suite verifies feature membership, all nine entity domains, actual platform registration, config-flow forms, unavailable source recovery and config-entry reload/unload. **A physical-device test on your Home Assistant installation is still required**, especially for attribute schema differences between vendors. Please open a GitHub issue with logs and a minimal example configuration when reporting a problem.
 
 ## Limitations and roadmap
 
-- Setup and editing are available in a UI, but the rule builder currently uses JSON text fields. A point-and-click rule editor is planned.
+- Ordinary setup and editing use forms. Complex action sequences, lists and fallback actions still use the optional advanced JSON editor.
 - Proxy support is intentionally limited to the nine listed standard domains. Additional domains need a small platform adapter.
 - Not all vendor-specific attributes, special services or multi-entity device controls can be transparently copied.
 - Only a single source entity is wrapped per config entry. Create multiple proxies for additional devices.

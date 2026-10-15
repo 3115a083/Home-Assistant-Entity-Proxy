@@ -40,12 +40,16 @@ sys.modules["homeassistant"].config_entries = ha_config
 
 vol = types.ModuleType("voluptuous")
 vol.Required = lambda value, default=None: value
+vol.Optional = vol.Required
 vol.Schema = lambda value: value
 sys.modules["voluptuous"] = vol
 
 selector = types.ModuleType("homeassistant.helpers.selector")
 selector.EntitySelectorConfig = lambda **kwargs: kwargs
-selector.EntitySelector = lambda config: config
+selector.EntitySelector = lambda config=None: config
+selector.SelectSelectorConfig = lambda **kwargs: kwargs
+selector.SelectSelector = lambda config: config
+selector.BooleanSelector = lambda: bool
 selector.TextSelectorConfig = lambda **kwargs: kwargs
 selector.TextSelector = lambda config=None: config
 sys.modules["homeassistant.helpers.selector"] = selector
@@ -89,8 +93,8 @@ class EditTests(unittest.IsolatedAsyncioTestCase):
     async def test_chooser_offers_preset_for_lights(self):
         flow = self.make_flow()
         result = await flow.async_step_init()
-        self.assertEqual(result["menu_options"], ["source", "preset", "rules"])
-        self.assertEqual((await self.make_flow("climate.a").async_step_init())["menu_options"], ["source", "rules"])
+        self.assertEqual(result["menu_options"], ["source", "preset", "guided", "rules"])
+        self.assertEqual((await self.make_flow("climate.a").async_step_init())["menu_options"], ["source", "guided", "rules"])
 
     async def test_rename_source_keeps_other_rules(self):
         rules = {"state_rules": [{"attribute": "brightness", "source": "light.old"}],

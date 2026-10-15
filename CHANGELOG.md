@@ -4,6 +4,25 @@ All notable changes to Entity Proxy are documented here.
 
 The project uses [Semantic Versioning](https://semver.org/). GitHub Releases use a `v` prefix (for example `v0.1.3`); the Home Assistant integration manifest uses the same version without the prefix.
 
+## [0.1.8] - 2026-10-14
+
+### Fixed
+- Return platform-specific feature flags for lights, climate, covers and fans instead of plain integers. Fix the light registration TypeError and its resulting `control_missing` diagnostic.
+- Reject invalid WHITE/color-temperature combinations when sanitizing light color modes.
+- Forward fan oscillation to Home Assistant's `fan.oscillate` service, preserving legacy `set_oscillating` rule keys.
+- Restore remembered light colors for brightness-only turn-on requests; explicit caller colors take precedence.
+- Clean up runtime subscriptions when platform setup raises an exception.
+
+### Added
+- Guided setup and options forms for state overrides, primary/backup sensors, typed constants, single-step action overrides and off presets. JSON is optional for ordinary setup.
+- Rule removal and an explicit review/save step; preserve unrelated options, entry IDs and unique IDs.
+- Real Home Assistant 2026.10.1 tests for all nine domain registrations, source recovery, feature flags, GUI validation, full config-entry setup, reload and unload.
+
+### Notes
+- Existing entries need no migration or recreation. Restart Home Assistant after upgrading.
+- Complex multi-step actions and action fallback sequences remain in the advanced JSON editor.
+- Automated tests use a disposable Home Assistant runtime and simulated source states/services. No physical WLED or thermostat has been tested.
+
 ## [0.1.7] - 2026-10-14
 
 ### Fixed

@@ -28,7 +28,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     active = [Platform(entry.data["source"].split(".")[0])]
     if Platform.SENSOR not in active:
         active.append(Platform.SENSOR)
-    await hass.config_entries.async_forward_entry_setups(entry, active)
+    try:
+        await hass.config_entries.async_forward_entry_setups(entry, active)
+    except Exception:
+        runtime.stop()
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+        raise
     if runtime.proxy_entity_id is None:
         # Missing control entities must be visible as an error, not silently
         # hidden behind healthy-looking configuration diagnostic sensors.

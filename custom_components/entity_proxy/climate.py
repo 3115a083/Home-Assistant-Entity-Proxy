@@ -1,6 +1,6 @@
 """Climate proxy with arbitrary state overrides (e.g. current_temperature)."""
 
-from homeassistant.components.climate import ClimateEntity
+from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature
 from .base import ProxyEntity
 from .const import DOMAIN
 
@@ -24,7 +24,7 @@ class ProxyClimate(ProxyEntity, ClimateEntity):
 
     @property
     def supported_features(self):
-        return int(self.val("supported_features", 0))
+        return self.features(ClimateEntityFeature)
 
     @property
     def current_temperature(self):
