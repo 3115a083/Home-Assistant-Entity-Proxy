@@ -52,14 +52,6 @@ During setup choose **Configure with forms**, or later **Configure → Configure
 - **Remove a rule:** Select a state/action rule to return that property/action to pass-through.
 - **Review and save:** The dialog lists the source and configured rule keys. Save commits all staged changes together. Cancelling leaves existing options unchanged.
 
-## Clearly labeled Entity Proxy settings and diagnostics
-
-From release **v0.1.7**, the edit dialog is titled **Entity Proxy Einstellungen** on German Home Assistant installations. Its three choices have visible labels: **Quellentität ändern**, **Ausschalt-Preset ändern** (for light proxies), and **Zustands- und Aktionsregeln bearbeiten**. English installations use similarly explicit labels. Home Assistant requires these labels in `options.step.init.menu_options`, not just each submenu's title.
-
-The two diagnostics use the configured **proxy name**, not just generic `Configuration` and `Errors`. For example, the device page can show `Entity Proxy · Schlafzimmer WLED · Aktive Einstellungen` and `Entity Proxy · Schlafzimmer WLED · Fehlerstatus`. They remain attached to the source device when it exists. The original diagnostic entities keep their `unique_id` and registry entity IDs.
-
-After upgrading, **restart Home Assistant** and refresh the browser/app (frontend translation caching can outlive an integration restart). If a diagnostic name was manually overridden in Home Assistant, that user-defined entity name may take precedence; reset the customized name in the entity settings to see the generated label.
-
 ## Editing an existing proxy (no re-creation required)
 
 Go to **Settings → Devices & services → Integrations → Entity Proxy**, open the **Entity Proxy integration entry/card** (not the WLED device or individual entity) and choose **Configure**. Choose:
