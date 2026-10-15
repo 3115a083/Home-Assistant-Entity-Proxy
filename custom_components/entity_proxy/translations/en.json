@@ -4,10 +4,11 @@
     "step": {
       "user": {
         "title": "Create entity proxy",
-        "description": "Choose an existing entity to wrap. You can hide the original in your dashboard, but do not disable it.",
+        "description": "Choose an existing entity to wrap. You can hide the original in your dashboard, but do not disable it. Optionally hide the original entity. This does not block direct access by automations.",
         "data": {
           "name": "Proxy name",
-          "source": "Source entity"
+          "source": "Source entity",
+          "hide_source": "Hide source entity"
         }
       },
       "rules": {
@@ -107,13 +108,15 @@
           "source": "Change source entity",
           "preset": "Change off preset",
           "rules": "Edit state and action rules",
-          "guided": "Configure with forms"
+          "guided": "Configure with forms",
+          "visibility": "Hide source entity"
         },
         "menu_option_descriptions": {
           "source": "Select the original or renamed entity.",
           "preset": "Choose the preset entity and option used for off.",
           "rules": "Edit state values, backup sensors, actions and fallbacks.",
-          "guided": "Add or remove state and action rules without JSON."
+          "guided": "Add or remove state and action rules without JSON.",
+          "visibility": "Change source visibility without disabling it."
         }
       },
       "source": {
@@ -196,6 +199,13 @@
       "finish": {
         "title": "Review and save",
         "description": "Save the configured proxy rules. Unchanged properties and actions mirror the source.\n\nSource: {source}\n\nState rules: {states}\n\nAction rules: {actions}"
+      },
+      "visibility": {
+        "title": "Hide source entity",
+        "description": "Keep the source enabled, but hide it from normal area, device and label targets and automatically populated views. Direct entity calls, explicit groups and custom templates can still use it. Turning this option off, unloading or removing the last proxy restores visibility only if Entity Proxy changed it. Pre-existing hides and manual visibility changes are preserved.",
+        "data": {
+          "hide_source": "Hide source entity"
+        }
       }
     },
     "error": {

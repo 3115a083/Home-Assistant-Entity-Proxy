@@ -56,6 +56,7 @@ During setup choose **Configure with forms**, or later **Configure → Configure
 
 Go to **Settings → Devices & services → Integrations → Entity Proxy**, open the **Entity Proxy integration entry/card** (not the WLED device or individual entity) and choose **Configure**. Choose:
 
+- **Hide source entity:** Optionally exclude the original from normal area/device/label targets while leaving it enabled. Explicit calls remain possible.
 - **Change source entity:** Select the renamed or replacement entity. Only entities in the *same domain* are allowed, so the proxy keeps its original type and entity ID. Literal references to the previous source in state and action rules are migrated automatically. References to other entities, such as WLED preset selectors, are unchanged. Historical virtual light state and saved color snapshots are reset when the source changes. The original integration data is never rewritten; the new source is saved in the entry options.
 - **Edit off preset** (lights only): Choose the `select` entity and the exact preset name. This updates the `turn_off` action while preserving all other action rules and state overrides. **Any previous `turn_off` fallback is replaced.** The editor intentionally does not add a power-cutting fallback.
 - **Edit advanced rules:** Edit or add state and action overrides using JSON. The current values are prefilled and input is retained when validation fails.
@@ -90,6 +91,14 @@ The two editors have **different JSON types**:
 - **Action overrides** must contain a JSON **object** (`{}`). WLED `turn_off`, `steps`, `fallback` and `reported_state` belong here, **not** in state overrides.
 
 Messages such as `Rules must contain a list` and `Unsupported state rule keys` usually mean an action rule was entered into the state editor. Version 0.1.1 highlights the affected field, shows a more specific validation error, preserves the user's input, and avoids writing normal form-validation failures into the warning log. No malformed configuration is silently accepted or executed.
+
+### Hide the original entity (optional)
+
+During setup, enable **Hide source entity**, or open **Configure → Hide source entity** for an existing proxy. Default: off. The original remains enabled and callable by the proxy. Normal Home Assistant area/device/label targets and automatically populated views exclude the hidden source, leaving the visible proxy as the room control. Keep the proxy visible and assigned to the intended area.
+
+This is not exclusive access. Automations using the original entity ID, explicit groups and custom templates (including custom blueprints that build entity lists themselves) can still call it. Update those references to use the proxy. Entity Proxy does not intercept or rewrite them.
+
+Visibility is changed only after the replacement entity registers. Turning the option off, changing source, unloading or removing the last proxy restores a source that Entity Proxy hid. If multiple proxies hide the same source, it stays hidden until the last claim ends. Existing hides and user visibility changes at release are preserved. Persistent ownership records allow cleanup after restart, using stable registry IDs. A source without an entity registry entry cannot be hidden; the Errors diagnostic explains this. Do not disable the source.
 
 ### Example 1: WLED, suppress the white flash on switch-on
 

@@ -8,6 +8,7 @@ from homeassistant.helpers.device import async_entity_id_to_device
 from homeassistant.helpers.entity import Entity
 
 from .const import DOMAIN
+from .visibility import async_get_visibility
 
 
 class ProxyEntity(Entity):
@@ -47,6 +48,13 @@ class ProxyEntity(Entity):
             self.runtime.proxy_entity_id = self.entity_id
             self.runtime._set_error("proxy_registration", None)
             self.runtime.notify()
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._proxy_role == "proxy":
+            # A disabled/deleted replacement must not leave the original hidden.
+            await async_get_visibility(self.hass).async_sync(self.runtime.entry)
+            self.runtime.proxy_entity_id = None
+            self.runtime._set_error("proxy_registration", "Proxy entity was removed or disabled; source hiding released")
 
     def _changed(self) -> None:
         self.async_write_ha_state()

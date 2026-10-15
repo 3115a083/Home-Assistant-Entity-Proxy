@@ -93,8 +93,16 @@ class EditTests(unittest.IsolatedAsyncioTestCase):
     async def test_chooser_offers_preset_for_lights(self):
         flow = self.make_flow()
         result = await flow.async_step_init()
-        self.assertEqual(result["menu_options"], ["source", "preset", "guided", "rules"])
-        self.assertEqual((await self.make_flow("climate.a").async_step_init())["menu_options"], ["source", "guided", "rules"])
+        self.assertEqual(result["menu_options"], ["source", "preset", "visibility", "guided", "rules"])
+        self.assertEqual((await self.make_flow("climate.a").async_step_init())["menu_options"], ["source", "visibility", "guided", "rules"])
+
+    async def test_visibility_preserves_all_options(self):
+        options = {"source": "light.renamed", "state_rules": [{"attribute": "brightness", "value": 123}], "action_rules": {}, "future_option": "preserve"}
+        flow = self.make_flow(rules=options)
+        assert "hide_source" in (await flow.async_step_visibility())["data_schema"]
+        result = await flow.async_step_visibility({"hide_source": True})
+        self.assertEqual(result["data"], {**options, "hide_source": True})
+        self.assertNotIn("hide_source", flow.config_entry.options)
 
     async def test_rename_source_keeps_other_rules(self):
         rules = {"state_rules": [{"attribute": "brightness", "source": "light.old"}],

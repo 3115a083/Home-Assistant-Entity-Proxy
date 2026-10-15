@@ -4,6 +4,18 @@ All notable changes to Entity Proxy are documented here.
 
 The project uses [Semantic Versioning](https://semver.org/). GitHub Releases use a `v` prefix (for example `v0.1.3`); the Home Assistant integration manifest uses the same version without the prefix.
 
+## [0.1.10] - 2026-10-15
+
+### Added
+- Optional **Hide source entity** checkbox during setup and a dedicated options form. Sources stay enabled; normal area/device/label targets and automatically populated views exclude them. Explicit entity calls, explicit groups and custom templates can still address them.
+- Shared, persistent ownership of source visibility. Restore only changes made by Entity Proxy when the last proxy unloads, changes source, disables the option or is removed. Preserve pre-existing hides and manual visibility changes at release.
+- Hide only after a replacement entity registers. Report missing source registry entries and storage errors instead of disabling or deleting the source.
+- Real Home Assistant regression tests for target expansion, direct service forwarding, setup/options, reload, shared sources, removal, stable registry identity, persisted claims and concurrent visibility edits.
+
+### Notes
+- Existing entries default to leaving source visibility unchanged. Existing options and proxy entity IDs are preserved. Restart Home Assistant after upgrading.
+- Hiding is not an access-control boundary and does not rewrite automations or group membership. No physical devices were tested.
+
 ## [0.1.9] - 2026-10-15
 
 ### Fixed

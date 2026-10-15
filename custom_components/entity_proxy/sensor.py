@@ -109,6 +109,7 @@ class ProxyConfigurationSensor(ProxyEntity, SensorEntity):
         result = {
             "proxy_name": self.runtime.entry.data["name"],
             "source_entity": self.runtime.source,
+            "hide_source_requested": self.runtime.entry.options.get("hide_source", False),
             "proxy_entity_id": self.runtime.proxy_entity_id,
             "proxy_domain": self.runtime.source.split(".", 1)[0],
             "state_override_count": len(self.runtime.state_rules),
