@@ -187,8 +187,10 @@ class ProxyRuntime:
         if is_proxy(self.hass, target):
             raise HomeAssistantError(f"Recursive proxy target blocked: {target}")
         state = self.hass.states.get(target)
-        if state is None or state.state in ("unavailable", "unknown"):
-            raise HomeAssistantError(f"Action target {target} is unavailable")
+        if state is None:
+            raise HomeAssistantError(f"Action target {target} was not found; check its entity ID and whether it is enabled")
+        if state.state == "unavailable":
+            raise HomeAssistantError(f"Action target {target} reports unavailable; check the source integration/device")
         domain, service = step["service"].split(".")
         if domain == "fan" and service == "set_oscillating":
             service = "oscillate"  # Preserve the legacy rule action name.
@@ -199,6 +201,21 @@ class ProxyRuntime:
             payload.pop(forbidden, None)
         payload.update(step["data"])
         payload["entity_id"] = target  # Always force a single, checked target.
+        if state.state == "unknown":
+            # A select can be available without a current selection (e.g. WLED
+            # after changing colors). Only allow a specifically advertised option.
+            options = state.attributes.get("options")
+            if not (
+                domain == "select"
+                and service == "select_option"
+                and isinstance(options, (list, tuple))
+                and isinstance(payload.get("option"), str)
+                and payload["option"] in options
+            ):
+                raise HomeAssistantError(
+                    f"Action target {target} reports unknown; only select.select_option "
+                    "with an advertised option can run without a known state"
+                )
         async with asyncio.timeout(ACTION_TIMEOUT):
             await self.hass.services.async_call(domain, service, payload, blocking=True)
 

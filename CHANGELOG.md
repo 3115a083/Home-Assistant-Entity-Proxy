@@ -4,6 +4,16 @@ All notable changes to Entity Proxy are documented here.
 
 The project uses [Semantic Versioning](https://semver.org/). GitHub Releases use a `v` prefix (for example `v0.1.3`); the Home Assistant integration manifest uses the same version without the prefix.
 
+## [0.1.9] - 2026-10-15
+
+### Fixed
+- Allow `select.select_option` on an `unknown` selector when the requested option is advertised. WLED preset selectors can have no current selection while still accepting commands.
+- Distinguish missing, unavailable and unknown action targets in error messages. Truly unavailable targets remain blocked.
+
+### Tests
+- Cover repeated preset-off/restore cycles, invalid options, unavailable and missing targets, service failures and a real Home Assistant SelectEntity with no current selection.
+- No physical WLED device was tested. Existing configuration needs no migration; restart Home Assistant after upgrading.
+
 ## [0.1.8] - 2026-10-14
 
 ### Fixed
