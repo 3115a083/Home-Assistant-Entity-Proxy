@@ -32,20 +32,6 @@ The goal is to preserve the **standard interface** of each supported entity, inc
 6. Choose **Review and save** to store your rules. Existing attributes/actions are replaced only when you explicitly add a rule for the same key; unrelated rules are preserved. Use **Remove a rule** to restore pass-through for that key.
 7. Use **Configure** on the integration later to change the source entity, edit the light-off preset, or edit advanced JSON rules. All changes apply after an automatic entry reload.
 
-### Releases and HACS updates
-
-Entity Proxy uses semantic versions. Each HACS-installable version has:
-
-- An integration `manifest.json` version, such as `0.1.3`.
-- A matching published GitHub Release tagged `v0.1.3`.
-- English release notes derived from [CHANGELOG.md](CHANGELOG.md).
-
-Releases are generated automatically from a version change on `main`, **only after checks pass**. Do not manually edit tags or overwrite published releases. The default branch is hidden in HACS to favor stable tagged versions.
-
-**Migrating an older HACS installation that shows a short Git commit hash:** Open HACS → Entity Proxy → three-dot menu → **Redownload**, explicitly select the latest release (`v0.1.7` or newer), and restart Home Assistant. HACS does not always prompt for the first tagged release when transitioning from an earlier commit-based install. Existing Home Assistant integration entries and their settings are retained by a normal HACS reinstall; keep a backup before changing versions.
-
-Find release notes at [GitHub Releases](https://github.com/3115a083/Home-Assistant-Entity-Proxy/releases).
-
 ### Manual
 
 Copy `custom_components/entity_proxy` into `<config>/custom_components/entity_proxy`, restart Home Assistant and proceed with step 3 above.
