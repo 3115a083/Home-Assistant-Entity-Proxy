@@ -87,11 +87,13 @@ class EntityProxyConfigFlow(GuidedRulesMixin, config_entries.ConfigFlow, domain=
             else:
                 self._source = source
                 self._name = user_input["name"].strip()
+                self._hide_source = user_input.get("hide_source", False)
                 return await self.async_step_setup()
         return self.async_show_form(
             step_id="user", errors=errors,
             data_schema=vol.Schema({
                 vol.Required("name"): selector.TextSelector(),
+                vol.Optional("hide_source", default=False): selector.BooleanSelector(),
                 vol.Required("source"): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain=sorted(SUPPORTED_DOMAINS))
                 ),
@@ -101,6 +103,8 @@ class EntityProxyConfigFlow(GuidedRulesMixin, config_entries.ConfigFlow, domain=
     def _begin_guided(self):
         if not hasattr(self, "_guided_options"):
             self._guided_options = {"state_rules": [], "action_rules": {}}
+            if getattr(self, "_hide_source", False):
+                self._guided_options["hide_source"] = True
 
     def _guided_source(self):
         return self._source
@@ -141,7 +145,7 @@ class EntityProxyConfigFlow(GuidedRulesMixin, config_entries.ConfigFlow, domain=
                 return self.async_create_entry(
                     title=self._name,
                     data={"source": self._source, "name": self._name},
-                    options=rules,
+                    options={**rules, "hide_source": getattr(self, "_hide_source", False)},
                 )
         return self.async_show_form(
             step_id="rules", errors=errors,
@@ -176,10 +180,20 @@ class ProxyOptionsFlow(GuidedRulesMixin, config_entries.OptionsFlow):
         return self.async_create_entry(title="", data=self._guided_options)
 
     async def async_step_init(self, user_input=None):
-        menu = ["source", "guided", "rules"]
+        menu = ["source", "visibility", "guided", "rules"]
         if _effective_source(self.config_entry).startswith("light."):
             menu.insert(1, "preset")
         return self.async_show_menu(step_id="init", menu_options=menu)
+
+    async def async_step_visibility(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(title="", data={
+                **self.config_entry.options, "hide_source": user_input["hide_source"],
+            })
+        return self.async_show_form(step_id="visibility", data_schema=vol.Schema({
+            vol.Required("hide_source", default=self.config_entry.options.get("hide_source", False)):
+                selector.BooleanSelector(),
+        }))
 
     async def async_step_source(self, user_input=None):
         entry = self.config_entry

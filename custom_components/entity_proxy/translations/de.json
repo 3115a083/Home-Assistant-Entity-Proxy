@@ -4,10 +4,11 @@
     "step": {
       "user": {
         "title": "Entity Proxy erstellen",
-        "description": "Wähle eine vorhandene Entität. Die Quellentität darf ausgeblendet, aber nicht deaktiviert werden.",
+        "description": "Wähle eine vorhandene Entität. Die Quellentität darf ausgeblendet, aber nicht deaktiviert werden. Optional kann die Ursprungsentität ausgeblendet werden. Dies verhindert keine direkten Zugriffe durch Automationen.",
         "data": {
           "name": "Proxy-Name",
-          "source": "Quellentität"
+          "source": "Quellentität",
+          "hide_source": "Ursprungsentität ausblenden"
         }
       },
       "rules": {
@@ -107,13 +108,15 @@
           "source": "Quellentität ändern",
           "preset": "Ausschalt-Preset ändern",
           "rules": "Zustands- und Aktionsregeln bearbeiten",
-          "guided": "Mit Formularen einrichten"
+          "guided": "Mit Formularen einrichten",
+          "visibility": "Ursprungsentität ausblenden"
         },
         "menu_option_descriptions": {
           "source": "Die ursprüngliche oder umbenannte Entität auswählen.",
           "preset": "Preset-Entität und Preset-Namen für Ausschalten festlegen.",
           "rules": "Zustandswerte, Alternativsensoren, Aktionen und Backups bearbeiten.",
-          "guided": "Zustands- und Aktionsregeln ohne JSON hinzufügen oder entfernen."
+          "guided": "Zustands- und Aktionsregeln ohne JSON hinzufügen oder entfernen.",
+          "visibility": "Sichtbarkeit der Quelle ändern, ohne sie zu deaktivieren."
         }
       },
       "source": {
@@ -196,6 +199,13 @@
       "finish": {
         "title": "Prüfen und speichern",
         "description": "Konfigurierte Proxy-Regeln speichern. Unveränderte Eigenschaften und Aktionen spiegeln die Quelle.\n\nQuelle: {source}\n\nZustandsregeln: {states}\n\nAktionsregeln: {actions}"
+      },
+      "visibility": {
+        "title": "Ursprungsentität ausblenden",
+        "description": "Die Ursprungsentität bleibt aktiviert, wird aber bei normalen Bereichs-, Geräte- und Label-Zielen sowie automatisch erstellten Ansichten ausgeblendet. Direkte Entitätsaufrufe, explizite Gruppen und eigene Templates bleiben möglich. Deaktivieren der Option, Entladen oder Entfernen des letzten Proxys stellt die Sichtbarkeit wieder her, sofern Entity Proxy sie verändert hat. Bereits ausgeblendete Entitäten und manuelle Änderungen werden beibehalten.",
+        "data": {
+          "hide_source": "Ursprungsentität ausblenden"
+        }
       }
     },
     "error": {

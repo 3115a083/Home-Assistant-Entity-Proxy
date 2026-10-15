@@ -51,6 +51,7 @@ class DeviceTests(unittest.TestCase):
             ),
             source=source,
             entry=types.SimpleNamespace(
+                options={},
                 entry_id="existing-entry",
                 data={"name": "Bedroom Proxy", "source": "light.wled"},
             ),
