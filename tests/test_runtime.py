@@ -146,6 +146,53 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(services.calls)
         self.assertIn("action:turn_off", runtime.errors)
 
+    async def test_unknown_preset_repeated_off_restore(self):
+        rule = {"turn_off": {"steps": [{"service": "select.select_option", "target": "select.wled_preset", "data": {"option": "Light OFF"}, "forward_arguments": False}], "fallback": [], "reported_state": "off"}}
+        runtime, services = self.make_runtime(rule)
+        runtime.hass.states.states["select.wled_preset"] = State("unknown", {"options": ["Normal", "Light OFF"]})
+        runtime._remember_light(runtime.source_state())
+        for _ in range(2):
+            await runtime.async_action("turn_off")
+            self.assertEqual(runtime.virtual_state, "off")
+            self.assertEqual(services.calls[-1], ("select.select_option", {"option": "Light OFF", "entity_id": "select.wled_preset"}))
+            await runtime.async_action("turn_on")
+            self.assertIsNone(runtime.virtual_state)
+            self.assertEqual(services.calls[-1][0], "light.turn_on")
+        self.assertNotIn("light.turn_off", [call[0] for call in services.calls])
+
+    async def test_unknown_targets_fail_closed(self):
+        for value, attrs, data, message in (
+            ("unknown", {}, {"option": "Light OFF"}, "reports unknown"),
+            ("unknown", {"options": ["Normal"]}, {"option": "Light OFF"}, "reports unknown"),
+            ("unknown", {"options": "Light OFF"}, {"option": "OFF"}, "reports unknown"),
+            ("unknown", {"options": ["Light OFF"]}, {}, "reports unknown"),
+            ("unavailable", {"options": ["Light OFF"]}, {"option": "Light OFF"}, "reports unavailable"),
+            (None, {}, {"option": "Light OFF"}, "was not found"),
+        ):
+            with self.subTest(value=value, attrs=attrs, data=data):
+                rule = {"turn_off": {"steps": [{"service": "select.select_option", "target": "select.wled_preset", "data": data, "forward_arguments": False}], "fallback": [], "reported_state": "off"}}
+                runtime, services = self.make_runtime(rule)
+                runtime.hass.states.states["select.wled_preset"] = State(value, attrs) if value else None
+                with self.assertRaisesRegex(ha_exceptions.HomeAssistantError, message):
+                    await runtime.async_action("turn_off")
+                self.assertFalse(services.calls)
+                self.assertIsNone(runtime.virtual_state)
+        runtime, services = self.make_runtime()
+        runtime.hass.states.states["light.wled"] = State("unknown")
+        with self.assertRaisesRegex(ha_exceptions.HomeAssistantError, "reports unknown"):
+            await runtime.async_action("turn_off")
+        self.assertFalse(services.calls)
+
+    async def test_unknown_select_uses_effective_option_and_propagates_failure(self):
+        runtime, services = self.make_runtime()
+        runtime.hass.states.states["select.wled_preset"] = State("unknown", {"options": ["Light OFF"]})
+        step = {"service": "select.select_option", "target": "select.wled_preset", "data": {"option": "Light OFF"}, "forward_arguments": True}
+        await runtime._call(step, {"option": "Wrong", "entity_id": "light.backup", "area_id": "all"})
+        self.assertEqual(services.calls[-1][1], {"option": "Light OFF", "entity_id": "select.wled_preset"})
+        services.fail.add("select.wled_preset")
+        with self.assertRaisesRegex(ha_exceptions.HomeAssistantError, "device offline"):
+            await runtime._call(step, {})
+
     async def test_concurrent_actions_are_serialized(self):
         runtime, services = self.make_runtime()
         active = 0

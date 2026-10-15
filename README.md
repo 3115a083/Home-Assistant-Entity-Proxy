@@ -60,6 +60,8 @@ Go to **Settings → Devices & services → Integrations → Entity Proxy**, ope
 - **Edit off preset** (lights only): Choose the `select` entity and the exact preset name. This updates the `turn_off` action while preserving all other action rules and state overrides. **Any previous `turn_off` fallback is replaced.** The editor intentionally does not add a power-cutting fallback.
 - **Edit advanced rules:** Edit or add state and action overrides using JSON. The current values are prefilled and input is retained when validation fails.
 
+A preset selector may show `unknown` when no preset is active. Entity Proxy can still call `select.select_option` if the exact requested preset is listed in its `options` attribute. A selector reporting `unavailable` remains blocked: check the WLED connection and original integration. A missing target requires checking its entity ID and whether it is enabled.
+
 The source entity and the preset select entity must remain enabled in Home Assistant. Hide the original *from dashboards* if desired, but do not disable it. Changing the source domain (e.g. `light` to `switch`) requires creating a new proxy.
 
 **If Configure is missing:** First verify the files under `/config/custom_components/entity_proxy/` are from release v0.1.5 (see `manifest.json`), not merely that HACS displays the latest available version. Redownload the tagged release in HACS, restart Home Assistant, refresh the browser and open the **integration entry's** menu. `Configure` is an *options flow* at the integration level, not a button on the source device. If it remains missing, collect the Home Assistant version and config-entry diagnostics/logs and report a bug. Do not delete the proxy to fix a missing menu, since that may change its entity IDs.

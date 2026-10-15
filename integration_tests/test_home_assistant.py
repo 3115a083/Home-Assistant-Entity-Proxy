@@ -241,3 +241,63 @@ async def test_complete_entry_setup_reload_unload(tmp_path):
         assert not reloaded._callbacks and reloaded._unsub is None
     finally:
         await hass.async_stop()
+
+
+@pytest.mark.asyncio
+async def test_unknown_select_accepts_off_preset_via_real_service(tmp_path):
+    """An available SelectEntity with current_option=None has state unknown."""
+    from homeassistant.components.select import SelectEntity
+    from homeassistant.setup import async_setup_component
+    from homeassistant.exceptions import HomeAssistantError
+
+    class PresetSelect(SelectEntity):
+        _attr_name = "WLED preset"
+        _attr_should_poll = False
+        _attr_options = ["Normal", "Light OFF"]
+        calls = 0
+
+        async def async_select_option(self, option):
+            self.calls += 1
+            self._attr_current_option = option
+            self.async_write_ha_state()
+
+    hass = await make_hass(tmp_path)
+    runtime = None
+    component = None
+    try:
+        assert await async_setup_component(hass, "select", {})
+        component = hass.data["select"]
+        selector = PresetSelect()
+        await component.async_add_entities([selector])
+        state = hass.states.get(selector.entity_id)
+        assert selector.available
+        assert state.state == "unknown"
+        assert state.attributes["options"] == ["Normal", "Light OFF"]
+        hass.states.async_set("light.source", "on", {"supported_color_modes": ["rgb"]})
+        runtime = ProxyRuntime(hass, entry(options={"action_rules": {"turn_off": {
+            "steps": [{"service": "select.select_option", "target": selector.entity_id,
+                "data": {"option": "Light OFF"}, "forward_arguments": False}],
+            "fallback": [], "reported_state": "off"}}}))
+        await runtime.async_start()
+        for count in (1, 2):
+            selector._attr_current_option = None
+            selector.async_write_ha_state()
+            assert hass.states.get(selector.entity_id).state == "unknown"
+            await runtime.async_action("turn_off")
+            assert selector.calls == count
+            assert hass.states.get(selector.entity_id).state == "Light OFF"
+            assert runtime.virtual_state == "off"
+        selector._attr_available = False
+        selector.async_write_ha_state()
+        runtime.virtual_state = None
+        with pytest.raises(HomeAssistantError, match="reports unavailable"):
+            await runtime.async_action("turn_off")
+        assert selector.calls == 2
+        assert runtime.virtual_state is None
+    finally:
+        if runtime:
+            runtime.stop()
+        if component:
+            for entity in list(component.entities):
+                await component.async_remove_entity(entity.entity_id)
+        await hass.async_stop()
